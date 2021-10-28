@@ -26,6 +26,7 @@ import logging
 from time import sleep
 
 from pymeasure.instruments import Instrument
+from pymeasure.instruments.validators import strict_discrete_range
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -41,6 +42,7 @@ class CNT91(Instrument):
         "REAR": "EXT4",
     }
     MAX_N_SAMPLES = int(1e5)
+    MAX_SAMPLE_RATE = 1e5
 
     def __init__(self, resourceName, **kwargs):
         super().__init__(resourceName, "Pendulum CNT-91", **kwargs)
@@ -50,73 +52,105 @@ class CNT91(Instrument):
         response = super().ask(cmd).rstrip("\n")
         return response
 
-    def read_buffer(self):
-        """Read out the entire device buffer"""
-        data = []
-
-        # loop until the buffer was completely read out
-        while True:
-            new = [
-                float(value) for value in self.ask(":FETC:ARR? MAX").split(",") if value
-            ]
-            data += new
-
-            if len(new) < self.batch_size:
-                break
-
-        return data
+    @property
+    def operation_complete(self):
+        """Is True if operation is complete."""
+        return self.ask("*OPC?") == "1"
 
     @property
     def batch_size(self):
-        # how many entries of the buffer can be transmitted with one query?
+        """Maximum number of buffer entries that can be transmitted at once."""
         if not hasattr(self, "_batch_size"):
             self._batch_size = int(self.ask("FORM:SMAX?"))
         return self._batch_size
 
-    def get_time_series(self, channel, n_samples, sample_rate, trigger_source=None):
-        try:
-            channel = self.CHANNELS[channel]
-        except ValueError:
-            raise Exception(
-                "Invalid channel %s, valid values are %s"
-                % (channel, list(self.CHANNELS.keys()))
-            )
+    def read_buffer(self):
+        """
+        Read out the entire device buffer one value at a time.
+
+        :yield : Frequency values from the buffer
+        """
+        data = []
+
+        # loop until the buffer was completely read out
+        while True:
+
+            # get maximum number of buffer values
+            data = [float(x) for x in self.ask(":FETC:ARR? MAX").split(",")]
+
+            for value in data:
+                # only yield single values to play nice with pymeausre's
+                # Procedures
+                yield value
+
+            # last values has been read from buffer
+            if len(data) < self.batch_size:
+                break
+
+    def arm_trigger_source(self, trigger_source):
+        """
+        Arm a trigger source.
+
+        param trigger_source : The channel on which the trigger is set.
+        """
+        assert trigger_source in self.TRIGGER_SOURCES.keys()
+
+        trigger_source = self.TRIGGER_SOURCES[trigger_source]
+        self.write(f"ARM:SOUR {trigger_source}; ARM:SLOP POS")
+
+    def set_measurement_time(self, measurement_time):
+        self.write(f":ACQ:APER {measurement_time}")
+
+    format = Instrument.control(
+        "FORM?",
+        "FORM %s",
+        "Reponse format (ASCII or REAL)",
+        validator=strict_discrete_range,
+        values=["ASCII", "REAL"]
+        )
+
+    def configure_array_measurement(self, n_samples, channel):
+        """
+        Configure the counter for an array of measurements.
+        """
+        assert n_samples <= self.MAX_N_SAMPLES
+        channel = self.CHANNELS[channel]
+        self.write(f":CONF:ARR:FREQ {n_samples},(@{channel})")
+
+    def buffer_time_series(
+            self,
+            channel,
+            n_samples,
+            sample_rate,
+            trigger_source=None):
+        """
+        Record a time series to the buffer and read it out after completion.
+
+        :param channel: Channel that should be used.
+        :param n_samples : The number of samples
+        :param sample_rate : Sample rate in Hz.
+        :param trigger_source: Optionally specify a trigger source to start the
+                               measurement.
+        """
+
+        assert sample_rate <= self.MAX_SAMPLE_RATE
 
         measurement_time = 1 / sample_rate
         cmds = [
-            # set output format to ascii
-            "FORM ASC",
-            # set channel number and number of repetitions
-            ":CONF:ARR:FREQ %d,(@%d)" % (n_samples, channel),
-            # disable continuous mode
             ":INIT:CONT OFF",
-            # set measurement time
-            ":ACQ:APER %f" % measurement_time,
         ]
 
-        self.clear()
-
+        self.clear()        
+        self.format("ASCII")
+        self.configure_array_measurement(n_samples, channel)
         self.write(";".join(cmds))
+        self.set_measurement_time(measurement_time)
 
         if trigger_source:
-            self.write(
-                ["ARM:SOUR %s" % self.TRIGGER_SOURCES[trigger_source], "ARM:SLOP POS"]
-            )
+            self.arm_trigger_source(trigger_source)
 
         # start the measurement (or wait for trigger)
         self.write(":INIT")
 
-        return self.wait_and_return()
-
-    @property
-    def operation_complete(self):
-        return self.ask("*OPC?") == "1"
-
-    def wait_and_return(self):
         while not self.operation_complete:
-            sleep(0.1)
-
-        data = self.read_buffer()
-        if len(data) == 1:
-            return data[0]
-        return data
+            sleep(0.01)
