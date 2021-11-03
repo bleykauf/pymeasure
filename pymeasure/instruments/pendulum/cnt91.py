@@ -37,11 +37,10 @@ log.addHandler(logging.NullHandler())
 
 
 class CNT91(Instrument):
-    """Represents a Pendulum CNT91 frequency counter."""
+    """Represents a Pendulum CNT-91 frequency counter."""
 
     CHANNELS = {"A": 1, "B": 2, "C": 3, "E": 4, "INTREF": 6}
-    MAX_BUFFER_SIZE = 32000
-    MAX_SAMPLE_RATE = 1e7  # FIXME: find out the actual maximum sampling rate.
+    MAX_BUFFER_SIZE = 32000  # User Manual 8-38
 
     def __init__(self, resourceName, **kwargs):
         super().__init__(resourceName, "Pendulum CNT-91", **kwargs)
@@ -77,14 +76,14 @@ class CNT91(Instrument):
         """
         while not self.operation_complete:
             # Wait until the buffer is filled.
-            sleep(0.1)
+            sleep(0.01)
         data = []
-        # Loop until the buffer was completely read out.
+        # Loop until the buffer is completely read out.
         while True:
             # Get maximum number of buffer values.
             new = self.values(":FETC:ARR? MAX")
             data += new
-            # Last values has been read from buffer.
+            # Last values have been read from buffer.
             if len(new) < self.batch_size:
                 break
         return data
@@ -122,7 +121,7 @@ class CNT91(Instrument):
         ":ACQ:APER %f",
         "Gate time for one measurement.",
         validator=strict_range,
-        values=[2e-9, 1000],  # Programmers guide 8-92
+        values=[2e-9, 1000],  # Programmer's guide 8-92
     )
 
     format = Instrument.control(
@@ -133,12 +132,21 @@ class CNT91(Instrument):
         values=["ASCII", "REAL"],
     )
 
+    interpolator_calibration = Instrument.control(
+        ":CAL:INT:AUTO?",
+        "CAL:INT:AUTO %s",
+        "Controls if interpolators should be calibrated automatically.",
+        strict_discrete_set,
+        values=["ON", "OFF"],
+        get_process=lambda v: "ON" if v else "OFF",
+    )
+
     def configure_frequency_array_measurement(self, n_samples, channel):
         """
         Configure the counter for an array of measurements.
 
         :param n_samples : The number of samples
-        :param sample_rate : Measurment channel (A, B, C, E, INTREF)
+        :param channel : Measurment channel (A, B, C, E, INTREF)
         """
         n_samples = truncated_range(n_samples, [1, self.MAX_BUFFER_SIZE])
         channel = strict_discrete_set(channel, self.CHANNELS)
@@ -157,9 +165,17 @@ class CNT91(Instrument):
         :param trigger_source: Optionally specify a trigger source to start the
                                measurement.
         """
-
-        sample_rate = strict_range(sample_rate, [0, self.MAX_SAMPLE_RATE])
-
+        if self.interpolator_calibration:
+            max_sample_rate = 125e3
+        else:
+            max_sample_rate = 250e3
+        log.info(
+            "Calibration of interpolation is {}".format(
+                self.interpolator_calibration
+            )
+        )
+        sample_rate = strict_range(sample_rate, [0, max_sample_rate])
+        log.info("sample rate is {}".format(sample_rate))
         measurement_time = 1 / sample_rate
 
         self.clear()
