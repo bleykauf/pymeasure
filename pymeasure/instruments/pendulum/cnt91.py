@@ -89,27 +89,6 @@ class CNT91(Instrument):
                 break
         return data
 
-    def read_next_buffer_value(self):
-        """
-        Read out the entire device buffer one value at a time.
-
-        :yield : Frequency values from the buffer.
-        """
-        while not self.operation_complete:
-            # Wait until the buffer is filled.
-            sleep(0.1)
-        # Loop until the buffer was completely read out.
-        while True:
-            # Get maximum number of buffer values.
-            data = self.values(":FETC:ARR? MAX")
-            for value in data:
-                # Only yield single values to play nice with pymeausre's
-                # Procedures.
-                yield value
-            # Last values has been read from buffer.
-            if len(data) < self.batch_size:
-                break
-
     external_start_arming_source = Instrument.control(
         "ARM:SOUR?",
         "ARM:SOUR %s",
