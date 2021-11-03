@@ -26,7 +26,11 @@ import logging
 from time import sleep
 
 from pymeasure.instruments import Instrument
-from pymeasure.instruments.validators import strict_discrete_range
+from pymeasure.instruments.validators import (
+    strict_discrete_set,
+    strict_range,
+    truncated_range,
+)
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -35,22 +39,23 @@ log.addHandler(logging.NullHandler())
 class CNT91(Instrument):
     """Represents a Pendulum CNT91 frequency counter."""
 
-    CHANNELS = {"A": 1, "B": 2, "C": 3, "REAR": 4, "INTREF": 6}
-    TRIGGER_SOURCES = {
-        "A": "EXT1",
-        "B": "EXT2",
-        "REAR": "EXT4",
-    }
-    MAX_N_SAMPLES = int(1e5)
-    MAX_SAMPLE_RATE = 1e5
+    CHANNELS = {"A": 1, "B": 2, "C": 3, "E": 4, "INTREF": 6}
+    MAX_BUFFER_SIZE = 32000
+    MAX_SAMPLE_RATE = 1e7  # FIXME: find out the actual maximum sampling rate.
 
     def __init__(self, resourceName, **kwargs):
         super().__init__(resourceName, "Pendulum CNT-91", **kwargs)
         self.adapter.connection.timeout = 120000
 
-    def ask(self, cmd):
-        response = super().ask(cmd).rstrip("\n")
-        return response
+    def ask(self, command):
+        """
+        Writes the command to the instrument through the adapter
+        and returns the read response.
+
+        :param command: command string to be sent to the instrument
+        """
+        # Infinite loop occures if not redefined.
+        return super().ask(command).rstrip("\n")
 
     @property
     def operation_complete(self):
@@ -66,63 +71,104 @@ class CNT91(Instrument):
 
     def read_buffer(self):
         """
+        Read out the entire buffer.
+
+        :return : Frequency values from the buffer.
+        """
+        while not self.operation_complete:
+            # Wait until the buffer is filled.
+            sleep(0.1)
+        data = []
+        # Loop until the buffer was completely read out.
+        while True:
+            # Get maximum number of buffer values.
+            new = self.values(":FETC:ARR? MAX")
+            data += new
+            # Last values has been read from buffer.
+            if len(new) < self.batch_size:
+                break
+        return data
+
+    def read_next_buffer_value(self):
+        """
         Read out the entire device buffer one value at a time.
 
-        :yield : Frequency values from the buffer
+        :yield : Frequency values from the buffer.
         """
-        data = []
-
-        # loop until the buffer was completely read out
+        while not self.operation_complete:
+            # Wait until the buffer is filled.
+            sleep(0.1)
+        # Loop until the buffer was completely read out.
         while True:
-
-            # get maximum number of buffer values
-            data = [float(x) for x in self.ask(":FETC:ARR? MAX").split(",")]
-
+            # Get maximum number of buffer values.
+            data = self.values(":FETC:ARR? MAX")
             for value in data:
-                # only yield single values to play nice with pymeausre's
-                # Procedures
+                # Only yield single values to play nice with pymeausre's
+                # Procedures.
                 yield value
-
-            # last values has been read from buffer
+            # Last values has been read from buffer.
             if len(data) < self.batch_size:
                 break
 
-    def arm_trigger_source(self, trigger_source):
-        """
-        Arm a trigger source.
+    external_start_arming_source = Instrument.control(
+        "ARM:SOUR?",
+        "ARM:SOUR %s",
+        (
+            "Select arming input or switch off the start arming function."
+            "Options are 'A', 'B' and 'E' (rear). 'IMM' turns trigger off."
+        ),
+        validator=strict_discrete_set,
+        values={"A": "EXT1", "B": "EXT2", "E": "EXT4", "IMM": "IMM"},
+        map_values=True,
+    )
 
-        param trigger_source : The channel on which the trigger is set.
-        """
-        assert trigger_source in self.TRIGGER_SOURCES.keys()
+    external_arming_start_slope = Instrument.control(
+        "ARM:SLOP?",
+        "ARM:SLOP %s",
+        "Set slope for the start arming condition.",
+        validator=strict_discrete_set,
+        values=["POS", "NEG"],
+    )
 
-        trigger_source = self.TRIGGER_SOURCES[trigger_source]
-        self.write(f"ARM:SOUR {trigger_source}; ARM:SLOP POS")
+    continuous = Instrument.control(
+        "INIT:CONT?",
+        "INIT:CONT %s",
+        "Turn continious measurement 'ON' or 'OFF'",
+        strict_discrete_set,
+        values=["ON", "OFF"],
+    )
 
-    def set_measurement_time(self, measurement_time):
-        self.write(f":ACQ:APER {measurement_time}")
+    measurement_time = Instrument.control(
+        ":ACQ:APER?",
+        ":ACQ:APER %f",
+        "Gate time for one measurement.",
+        validator=strict_range,
+        values=[2e-9, 1000],  # Programmers guide 8-92
+    )
 
     format = Instrument.control(
         "FORM?",
         "FORM %s",
-        "Reponse format (ASCII or REAL)",
-        validator=strict_discrete_range,
-        values=["ASCII", "REAL"]
-        )
+        "Reponse format (ASCII or REAL).",
+        validator=strict_discrete_set,
+        values=["ASCII", "REAL"],
+    )
 
-    def configure_array_measurement(self, n_samples, channel):
+    def configure_frequency_array_measurement(self, n_samples, channel):
         """
         Configure the counter for an array of measurements.
+
+        :param n_samples : The number of samples
+        :param sample_rate : Measurment channel (A, B, C, E, INTREF)
         """
-        assert n_samples <= self.MAX_N_SAMPLES
+        n_samples = truncated_range(n_samples, [1, self.MAX_BUFFER_SIZE])
+        channel = strict_discrete_set(channel, self.CHANNELS)
         channel = self.CHANNELS[channel]
         self.write(f":CONF:ARR:FREQ {n_samples},(@{channel})")
 
-    def buffer_time_series(
-            self,
-            channel,
-            n_samples,
-            sample_rate,
-            trigger_source=None):
+    def buffer_frequency_time_series(
+        self, channel, n_samples, sample_rate, trigger_source=None
+    ):
         """
         Record a time series to the buffer and read it out after completion.
 
@@ -133,24 +179,18 @@ class CNT91(Instrument):
                                measurement.
         """
 
-        assert sample_rate <= self.MAX_SAMPLE_RATE
+        sample_rate = strict_range(sample_rate, [0, self.MAX_SAMPLE_RATE])
 
         measurement_time = 1 / sample_rate
-        cmds = [
-            ":INIT:CONT OFF",
-        ]
 
-        self.clear()        
-        self.format("ASCII")
-        self.configure_array_measurement(n_samples, channel)
-        self.write(";".join(cmds))
-        self.set_measurement_time(measurement_time)
+        self.clear()
+        self.format = "ASCII"
+        self.configure_frequency_array_measurement(n_samples, channel)
+        self.continuous = "OFF"
+        self.measurement_time = measurement_time
 
         if trigger_source:
-            self.arm_trigger_source(trigger_source)
+            self.external_start_arming_source = trigger_source
 
         # start the measurement (or wait for trigger)
         self.write(":INIT")
-
-        while not self.operation_complete:
-            sleep(0.01)
