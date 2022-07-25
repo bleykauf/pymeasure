@@ -51,6 +51,7 @@ Instruments by manufacturer:
    signalrecovery/index
    srs/index
    tektronix/index
+   teledyne/index
    temptronic/index
    thermotron/index
    thorlabs/index

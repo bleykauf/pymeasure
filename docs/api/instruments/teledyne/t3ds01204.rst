@@ -1,0 +1,7 @@
+######################################
+Teledyne T3DS01204 oscilloscope
+######################################
+
+.. autoclass:: pymeasure.instruments.teledyne.t3ds01204.T3DS01204
+    :members:
+    :show-inheritance:
