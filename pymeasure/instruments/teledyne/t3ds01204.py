@@ -25,6 +25,7 @@
 import logging
 
 from pymeasure.instruments import Instrument
+from pymeasure.instruments.validators import strict_discrete_set
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -35,5 +36,15 @@ class T3DS01204(Instrument):
 
     def __init__(self, resourceName, **kwargs):
         super().__init__(
-            resourceName, "Teledyne T3DS01204 oscilloscope", includeSCPI=True, **kwargs
+            resourceName, "Teledyne T3DS01204", includeSCPI=True, **kwargs
+        )
+        # Make sure communication mode is off so queries are interpreted correctly.
+        self._comm_header = "OFF"
+
+    _comm_header = Instrument.control(
+        "CHDR?",
+        "CHDR  %s",
+        "Controls the way the oscilloscope formats response to queries.",
+        validator=strict_discrete_set,
+        values=["OFF", "SHORT", "LONG"]
         )
