@@ -193,6 +193,14 @@ class T3DS01204(Instrument):
         slope = strict_discrete_set(slope, ["POS", "NEG", "WINDOW"])
         self.write(f"{source}:TRSL {slope}")
 
+    trigger_mode = Instrument.control(
+        "TRMD?",
+        "TRMD %s",
+        "Trigger mode of the scope.",
+        validator=strict_discrete_set,
+        values=["AUTO", "NORMAL", "SINGLE", "STOP"],
+    )
+
     # Create channel instances ---------------------------------------------------------
 
     @property
