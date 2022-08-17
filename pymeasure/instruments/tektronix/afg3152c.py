@@ -21,26 +21,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-from math import sqrt, log10
+from math import log10, sqrt
+
 from pymeasure.instruments import Instrument
-from pymeasure.instruments.validators import strict_range, strict_discrete_set
+from pymeasure.instruments.validators import strict_discrete_set, strict_range
 
 
 class Channel:
-    SHAPES = {
-        "sinusoidal": "SIN",
-        "square": "SQU",
-        "pulse": "PULS",
-        "ramp": "RAMP",
-        "prnoise": "PRN",
-        "dc": "DC",
-        "sinc": "SINC",
-        "gaussian": "GAUS",
-        "lorentz": "LOR",
-        "erise": "ERIS",
-        "edecay": "EDEC",
-        "haversine": "HAV",
-    }
+    def __init__(self, instrument, number):
+        self.instrument = instrument
+        self.number = number
+
     FREQ_LIMIT = [1e-6, 150e6]  # Frequeny limit for sinusoidal function
     DUTY_LIMIT = [0.001, 99.999]
     AMPLITUDE_LIMIT = {
@@ -53,13 +44,52 @@ class Channel:
     UNIT_LIMIT = ["VPP", "VRMS", "DBM"]
     IMP_LIMIT = [1, 1e4]
 
+    def ask(self, command):
+        return self.instrument.ask("source%d:%s" % (self.number, command))
+
+    def read(self):
+        return self.instrument.read()
+
+    def write(self, command):
+        self.instrument.write("source%d:%s" % (self.number, command))
+
+    def values(self, command, **kwargs):
+        """
+        Reads a set of values from the instrument through the adapter,
+        passing on any key-word arguments.
+        """
+        return self.instrument.values("source%d:%s" % (self.number, command), **kwargs)
+
+    def enable(self):
+        self.instrument.write("output%d:state on" % self.number)
+
+    def disable(self):
+        self.instrument.write("output%d:state off" % self.number)
+
     shape = Instrument.control(
         "function:shape?",
         "function:shape %s",
         """ A string property that controls the shape of the output.
             This property can be set.""",
         validator=strict_discrete_set,
-        values=SHAPES,
+        values={
+            "sinusoidal": "SIN",
+            "square": "SQU",
+            "pulse": "PULS",
+            "ramp": "RAMP",
+            "prnoise": "PRN",
+            "dc": "DC",
+            "sinc": "SINC",
+            "gaussian": "GAUS",
+            "lorentz": "LOR",
+            "erise": "ERIS",
+            "edecay": "EDEC",
+            "haversine": "HAV",
+            "user1": "USER1",
+            "user2": "USER2",
+            "user3": "USER3",
+            "user4": "USER4",
+        },
         map_values=True,
     )
 
@@ -135,52 +165,13 @@ class Channel:
         cast=int,
     )
 
-    def __init__(self, instrument, number):
-        self.instrument = instrument
-        self.number = number
-
-    def values(self, command, **kwargs):
-        """Reads a set of values from the instrument through the adapter,
-        passing on any key-word arguments.
-        """
-        return self.instrument.values(
-            "source%d:%s" % (self.number, command), **kwargs
-        )
-
-    def ask(self, command):
-        return self.instrument.ask("source%d:%s" % (self.number, command))
-
-    def write(self, command):
-        self.instrument.write("source%d:%s" % (self.number, command))
-
-    def read(self):
-        return self.instrument.read()
-
-    def enable(self):
-        self.instrument.write("output%d:state on" % self.number)
-
-    def disable(self):
-        self.instrument.write("output%d:state off" % self.number)
-
-    def waveform(
-        self, shape="SIN", frequency=1e6, units="VPP", amplitude=1, offset=0
-    ):
+    def waveform(self, shape="SIN", frequency=1e6, units="VPP", amplitude=1, offset=0):
         """General setting method for a complete wavefunction"""
-        self.instrument.write(
-            "source%d:function:shape %s" % (self.number, shape)
-        )
-        self.instrument.write(
-            "source%d:frequency:fixed %e" % (self.number, frequency)
-        )
-        self.instrument.write(
-            "source%d:voltage:unit %s" % (self.number, units)
-        )
-        self.instrument.write(
-            "source%d:voltage:amplitude %e%s" % (self.number, amplitude, units)
-        )
-        self.instrument.write(
-            "source%d:voltage:offset %eV" % (self.number, offset)
-        )
+        self.write("function:shape %s" % shape)
+        self.write("frequency:fixed %e" % frequency)
+        self.write("voltage:unit %s" % units)
+        self.write("voltage:amplitude %e%s" % (amplitude, units))
+        self.instrument.write("voltage:offset %eV" % offset)
 
 
 class AFG3152C(Instrument):
@@ -199,9 +190,7 @@ class AFG3152C(Instrument):
 
     def __init__(self, adapter, **kwargs):
         super().__init__(
-            adapter,
-            "Tektronix AFG3152C arbitrary function generator",
-            **kwargs
+            adapter, "Tektronix AFG3152C arbitrary function generator", **kwargs
         )
         self.ch1 = Channel(self, 1)
         self.ch2 = Channel(self, 2)
