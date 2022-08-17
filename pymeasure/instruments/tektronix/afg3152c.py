@@ -32,18 +32,6 @@ class Channel:
         self.instrument = instrument
         self.number = number
 
-    FREQ_LIMIT = [1e-6, 150e6]  # Frequeny limit for sinusoidal function
-    DUTY_LIMIT = [0.001, 99.999]
-    AMPLITUDE_LIMIT = {
-        "VPP": [20e-3, 10],
-        "VRMS": list(map(lambda x: round(x / 2 / sqrt(2), 3), [20e-3, 10])),
-        "DBM": list(
-            map(lambda x: round(20 * log10(x / 2 / sqrt(0.1)), 2), [20e-3, 10])
-        ),
-    }  # Vpp, Vrms and dBm limits
-    UNIT_LIMIT = ["VPP", "VRMS", "DBM"]
-    IMP_LIMIT = [1, 1e4]
-
     def ask(self, command):
         return self.instrument.ask("source%d:%s" % (self.number, command))
 
@@ -99,7 +87,7 @@ class Channel:
         """ A string property that controls the amplitude unit.
             This property can be set.""",
         validator=strict_discrete_set,
-        values=UNIT_LIMIT,
+        values=["VPP", "VRMS", "DBM"],
     )
 
     amp_vpp = Instrument.control(
@@ -108,7 +96,7 @@ class Channel:
         """ A floating point property that controls the output amplitude
             in Vpp. This property can be set.""",
         validator=strict_range,
-        values=AMPLITUDE_LIMIT["VPP"],
+        values=[20e-3, 10],
     )
 
     amp_dbm = Instrument.control(
@@ -117,7 +105,9 @@ class Channel:
         """ A floating point property that controls the output amplitude
             in dBm. This property can be set.""",
         validator=strict_range,
-        values=AMPLITUDE_LIMIT["DBM"],
+        values=list(
+            map(lambda x: round(20 * log10(x / 2 / sqrt(0.1)), 2), [20e-3, 10])
+        ),
     )
 
     amp_vrms = Instrument.control(
@@ -126,7 +116,7 @@ class Channel:
         """ A floating point property that controls the output amplitude
             in Vrms. This property can be set.""",
         validator=strict_range,
-        values=AMPLITUDE_LIMIT["VRMS"],
+        values=list(map(lambda x: round(x / 2 / sqrt(2), 3), [20e-3, 10])),
     )
 
     offset = Instrument.control(
@@ -142,7 +132,7 @@ class Channel:
         """ A floating point property that controls the frequency.
             This property can be set.""",
         validator=strict_range,
-        values=FREQ_LIMIT,
+        values=[1e-6, 150e6],  # frequeny limit for sinusoidal function
     )
 
     duty = Instrument.control(
@@ -151,7 +141,7 @@ class Channel:
         """ A floating point property that controls the duty
             cycle of pulse. This property can be set.""",
         validator=strict_range,
-        values=DUTY_LIMIT,
+        values=[0.001, 99.999],
     )
 
     impedance = Instrument.control(
@@ -161,7 +151,7 @@ class Channel:
             impedance of the channel. Be careful with this.
             This property can be set.""",
         validator=strict_range,
-        values=IMP_LIMIT,
+        values=[1, 1e4],
         cast=int,
     )
 
