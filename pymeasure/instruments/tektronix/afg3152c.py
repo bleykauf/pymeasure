@@ -167,11 +167,11 @@ class Channel:
 
     def waveform(self, shape="SIN", frequency=1e6, units="VPP", amplitude=1, offset=0):
         """General setting method for a complete wavefunction"""
-        self.write("function:shape %s" % shape)
-        self.write("frequency:fixed %e" % frequency)
-        self.write("voltage:unit %s" % units)
-        self.write("voltage:amplitude %e%s" % (amplitude, units))
-        self.instrument.write("voltage:offset %eV" % offset)
+        self.write(f"function:shape {shape}")
+        self.write(f"frequency:fixed {frequency:.6E}")
+        self.write(f"voltage:unit {units}%s")
+        self.write(f"voltage:amplitude {amplitude:.6E}{units}")
+        self.instrument.write("voltage:offset {offset:.6E}V")
 
 
 class AFG3152C(Instrument):
