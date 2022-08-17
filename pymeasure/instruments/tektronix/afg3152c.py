@@ -33,26 +33,26 @@ class Channel:
         self.number = number
 
     def ask(self, command):
-        return self.instrument.ask("source%d:%s" % (self.number, command))
+        return self.instrument.ask(f"source{self.number}:{command}")
 
     def read(self):
         return self.instrument.read()
 
     def write(self, command):
-        self.instrument.write("source%d:%s" % (self.number, command))
+        self.instrument.write(f"source{self.number}:{command}")
 
     def values(self, command, **kwargs):
         """
         Reads a set of values from the instrument through the adapter,
         passing on any key-word arguments.
         """
-        return self.instrument.values("source%d:%s" % (self.number, command), **kwargs)
+        return self.instrument.values(f"source{self.number}:{command}", **kwargs)
 
     def enable(self):
-        self.instrument.write("output%d:state on" % self.number)
+        self.instrument.write(f"output{self.number}:state on")
 
     def disable(self):
-        self.instrument.write("output%d:state off" % self.number)
+        self.instrument.write(f"output{self.number}:state off")
 
     shape = Instrument.control(
         "function:shape?",
