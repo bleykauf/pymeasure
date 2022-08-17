@@ -105,9 +105,7 @@ class Channel:
         """ A floating point property that controls the output amplitude
             in dBm. This property can be set.""",
         validator=strict_range,
-        values=list(
-            map(lambda x: round(20 * log10(x / 2 / sqrt(0.1)), 2), [20e-3, 10])
-        ),
+        values=list(map(lambda x: round(20 * log10(x / 2 / sqrt(0.1)), 2), [20e-3, 10])),
     )
 
     amp_vrms = Instrument.control(
@@ -180,13 +178,10 @@ class AFG3152C(Instrument):
 
     def __init__(self, adapter, **kwargs):
         super().__init__(
-            adapter, "Tektronix AFG3152C arbitrary function generator", **kwargs
+            adapter, "Tektronix AFG3152C arbitrary function generator", includeSCPI=True, **kwargs
         )
         self.ch1 = Channel(self, 1)
         self.ch2 = Channel(self, 2)
 
     def beep(self):
         self.write("system:beep")
-
-    def opc(self):
-        return int(self.ask("*OPC?"))
