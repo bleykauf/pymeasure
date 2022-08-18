@@ -117,7 +117,7 @@ class Channel:
             value = truncated_discrete_set(value, np.arange(7.1e-3, 3.5361, step=0.1e-3))
         elif unit == "DBM":
             value = truncated_discrete_set(value, np.arange(-30, 23.9801, step=0.1e-3))
-        self.write(f"FREQ:AMPL {value}{unit}")
+        self.write(f"VOLT:AMPL {value}{unit}")
 
     offset = Instrument.control(
         "voltage:offset?", "voltage:offset %e", "Amplitude  offset in volts",
