@@ -61,26 +61,25 @@ class Channel:
         "function:shape %s",
         "A string property that controls the shape of the output. This property can be set.",
         validator=strict_discrete_set,
-        values={
-            "sinusoidal": "SIN",
-            "square": "SQU",
-            "pulse": "PULS",
-            "ramp": "RAMP",
-            "prnoise": "PRN",
-            "dc": "DC",
-            "sinc": "SINC",
-            "gaussian": "GAUS",
-            "lorentz": "LOR",
-            "erise": "ERIS",
-            "edecay": "EDEC",
-            "haversine": "HAV",
-            "user1": "USER1",
-            "user2": "USER2",
-            "user3": "USER3",
-            "user4": "USER4",
-            "emem": "EMEM",
-        },
-        map_values=True,
+        values=[
+            "SIN",
+            "SQU",
+            "PULS",
+            "RAMP",
+            "PRN",
+            "DC",
+            "SINC",
+            "GAUS",
+            "LOR",
+            "ERIS",
+            "EDEC",
+            "HAV",
+            "USER1",
+            "USER2",
+            "USER3",
+            "USER4",
+            "EMEM",
+        ],
     )
 
     unit = Instrument.control(
@@ -95,7 +94,7 @@ class Channel:
     def amplitude(self):
         """"
         The amplitude of the waveform.
-        
+
         Unit depends on the current value of the `unit` attribute. This attribute can either be set
         by a numerical value (unit then depends on the value of the `unit` attribute`) or by a tuple
         of a numerical value and an unit ("VPP", "VRMS" or "DBM"), e.g. (3, 'VPP').
@@ -154,12 +153,12 @@ class Channel:
         cast=int,
     )
 
-    def waveform(self, shape="sinusoidal", frequency=1e6, amplitude=None, unit=None, offset=0):
+    def waveform(self, shape="SIN", frequency=1e6, amplitude=None, unit=None, offset=0):
         """
         Set all parameters necessary for loading a waveform to the channel.
 
-        :param shape: one of the default shapes (e.g. 'gaussian'), a user memory slot (e.g.
-            'user2') or edit memory ('emem')
+        :param shape: one of the default shapes (e.g. 'GAUS'), a user memory slot (e.g.
+            'USER') or edit memory ('EMEM')
         :type shape: str
         :param frequency: frequency of the waveform in hertz, default 1 MHz
         :type frequency: float
