@@ -61,7 +61,7 @@ class Channel:
     shape = Instrument.control(
         "function:shape?",
         "function:shape %s",
-        "A string property that controls the shape of the output. This property can be set.",
+        "Shape of the output, either a build-in shape, a user memory slot or the edit memory.",
         validator=strict_discrete_set,
         values=[
             "SIN",
@@ -87,7 +87,7 @@ class Channel:
     unit = Instrument.control(
         "voltage:unit?",
         "voltage:unit %s",
-        "A string property that controls the amplitude unit. This property can be set.",
+        "Amplitude unit",
         validator=strict_discrete_set,
         values=["VPP", "VRMS", "DBM"],
     )
@@ -120,15 +120,12 @@ class Channel:
         self.write(f"FREQ:AMPL {value}{unit}")
 
     offset = Instrument.control(
-        "voltage:offset?",
-        "voltage:offset %e",
-        """Floating point property that controls the amplitude  offset. It is always in volts. This
-           property can be set.""",
+        "voltage:offset?", "voltage:offset %e", "Amplitude  offset in volts",
     )
 
     @property
     def frequency(self):
-        "Floating point property that controls the frequency. This property can be set."
+        "Frequency of the waveform."
         return self.values("FREQ:FIX?")[0]
 
     @frequency.setter
@@ -139,8 +136,7 @@ class Channel:
     duty = Instrument.control(
         "pulse:dcycle?",
         "pulse:dcycle %.3f",
-        """Floating point property that controls the duty cycle ofa  pulse. This property can be
-           set.""",
+        "Dduty cycle of a  pulse. ",
         validator=strict_range,
         values=[0.001, 99.999],
     )
@@ -148,8 +144,7 @@ class Channel:
     impedance = Instrument.control(
         "output:impedance?",
         "output:impedance %d",
-        """Floating point property that controls the output impedance of the channel. Be careful
-           with this. This property can be set.""",
+        "Output impedance of the channel.",
         validator=strict_discrete_set,
         values=range(1, 10001),
         cast=int,
