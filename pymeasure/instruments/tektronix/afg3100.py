@@ -24,9 +24,11 @@
 
 import numpy as np
 from pymeasure.instruments import Instrument
-from pymeasure.instruments.validators import (strict_discrete_set,
-                                              strict_range,
-                                              truncated_discrete_set)
+from pymeasure.instruments.validators import (
+    strict_discrete_set,
+    strict_range,
+    truncated_discrete_set,
+)
 
 
 class Channel:
@@ -148,8 +150,8 @@ class Channel:
         "output:impedance %d",
         """Floating point property that controls the output impedance of the channel. Be careful
            with this. This property can be set.""",
-        validator=strict_range,
-        values=[1, 1e4],
+        validator=strict_discrete_set,
+        values=range(1, 10001),
         cast=int,
     )
 
