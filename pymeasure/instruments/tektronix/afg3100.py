@@ -24,11 +24,9 @@
 
 import numpy as np
 from pymeasure.instruments import Instrument
-from pymeasure.instruments.validators import (
-    strict_discrete_set,
-    strict_range,
-    truncated_discrete_set,
-)
+from pymeasure.instruments.validators import (strict_discrete_set,
+                                              strict_range,
+                                              truncated_discrete_set)
 
 
 class Channel:
@@ -93,32 +91,32 @@ class Channel:
         values=["VPP", "VRMS", "DBM"],
     )
 
-    amp_vpp = Instrument.control(
-        "voltage:amplitude?",
-        "voltage:amplitude %eVPP",
-        """Floating point property that controls the output amplitude in Vpp. This property can be
-           set.""",
-        validator=strict_range,
-        values=np.arange(20e-3, 10.0001, step=0.1e-3),
-    )
+    @property
+    def amplitude(self):
+        """"
+        The amplitude of the waveform.
+        
+        Unit depends on the current value of the `unit` attribute. This attribute can either be set
+        by a numerical value (unit then depends on the value of the `unit` attribute`) or by a tuple
+        of a numerical value and an unit ("VPP", "VRMS" or "DBM"), e.g. (3, 'VPP').
+        """
+        return self.values("VOLT:AMPL?")[0]
 
-    amp_dbm = Instrument.control(
-        "voltage:amplitude?",
-        "voltage:amplitude %eDBM",
-        """Floating point property that controls the output amplitude in dBm. This property can be
-           set.""",
-        validator=strict_range,
-        values=np.arange(-30, 23.9801, step=0.1e-3),
-    )
-
-    amp_vrms = Instrument.control(
-        "voltage:amplitude?",
-        "voltage:amplitude %eVRMS",
-        """Floating point property that controls the output amplitude in Vrms. This property can be
-           set.""",
-        validator=truncated_discrete_set,
-        values=np.arange(7.1e-3, 3.5361, step=0.1e-3),
-    )
+    @amplitude.setter
+    def amplitude(self, amplitude):
+        if isinstance(amplitude, (tuple, list)):
+            value, unit = amplitude
+        else:
+            value = amplitude
+            unit = self.unit
+        unit = strict_discrete_set(unit, ["VPP", "VRMS", "DBM"])
+        if unit == "VPP":
+            value = truncated_discrete_set(value, np.arange(20e-3, 10.0001, step=0.1e-3))
+        elif unit == "VRMS":
+            value = truncated_discrete_set(value, np.arange(7.1e-3, 3.5361, step=0.1e-3))
+        elif unit == "DBM":
+            value = truncated_discrete_set(value, np.arange(-30, 23.9801, step=0.1e-3))
+        self.write(f"FREQ:AMPL {value}{unit}")
 
     offset = Instrument.control(
         "voltage:offset?",
@@ -156,7 +154,7 @@ class Channel:
         cast=int,
     )
 
-    def waveform(self, shape="sinusoidal", frequency=1e6, units="VPP", amplitude=1, offset=0):
+    def waveform(self, shape="sinusoidal", frequency=1e6, amplitude=None, unit=None, offset=0):
         """
         Set all parameters necessary for loading a waveform to the channel.
 
@@ -165,22 +163,19 @@ class Channel:
         :type shape: str
         :param frequency: frequency of the waveform in hertz, default 1 MHz
         :type frequency: float
-        :param units: unit for the amplitude, 'VPP' (default), 'VRMS' or 'DBM'
-        :type units: str
-        :param amplitude: amplitude of the waveform, see also `units`.
-        :type amplitude: float
+        :param amplitude: amplitude of the waveform in units of `unit`
+        :param units: unit for the amplitude, 'VPP' , 'VRMS' or 'DBM'; if not unit is provided, the
+            current value of the `unit` attribute is used.
+        :type unit: str
         :param offset: Offset of the waveform in volts
         :type offset: float
         """
         self.shape = shape
         self.frequency = frequency
-        self.unit = units
-        if self.unit == "VPP":
-            self.amp_vpp = amplitude
-        elif self.unit == "VRMS":
-            self.amp_vrms = amplitude
-        elif self.unit == "DBM":
-            self.amp_dbm = amplitude
+        if unit:
+            amplitude = (amplitude, unit)
+        if amplitude:
+            self.amplitude = amplitude
         self.offset = offset
 
 
