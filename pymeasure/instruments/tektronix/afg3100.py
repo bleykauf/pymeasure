@@ -21,10 +21,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-from math import log10, sqrt
 
+from numpy import arange
 from pymeasure.instruments import Instrument
-from pymeasure.instruments.validators import strict_discrete_set, strict_range
+from pymeasure.instruments.validators import (strict_discrete_set,
+                                              strict_range,
+                                              truncated_discrete_set)
 
 
 class Channel:
@@ -43,8 +45,8 @@ class Channel:
 
     def values(self, command, **kwargs):
         """
-        Reads a set of values from the instrument through the adapter,
-        passing on any key-word arguments.
+        Read a set of values from the instrument through the adapter, passing on any keyword
+        arguments.
         """
         return self.instrument.values(f"source{self.number}:{command}", **kwargs)
 
@@ -57,8 +59,7 @@ class Channel:
     shape = Instrument.control(
         "function:shape?",
         "function:shape %s",
-        """ A string property that controls the shape of the output.
-            This property can be set.""",
+        "A string property that controls the shape of the output. This property can be set.",
         validator=strict_discrete_set,
         values={
             "sinusoidal": "SIN",
@@ -84,8 +85,7 @@ class Channel:
     unit = Instrument.control(
         "voltage:unit?",
         "voltage:unit %s",
-        """ A string property that controls the amplitude unit.
-            This property can be set.""",
+        "A string property that controls the amplitude unit. This property can be set.",
         validator=strict_discrete_set,
         values=["VPP", "VRMS", "DBM"],
     )
@@ -93,51 +93,52 @@ class Channel:
     amp_vpp = Instrument.control(
         "voltage:amplitude?",
         "voltage:amplitude %eVPP",
-        """ A floating point property that controls the output amplitude
-            in Vpp. This property can be set.""",
+        """Floating point property that controls the output amplitude in Vpp. This property can be
+           set.""",
         validator=strict_range,
-        values=[20e-3, 10],
+        values=arange(20e-3, 10.0001, step=0.1e-3),
     )
 
     amp_dbm = Instrument.control(
         "voltage:amplitude?",
         "voltage:amplitude %eDBM",
-        """ A floating point property that controls the output amplitude
-            in dBm. This property can be set.""",
+        """Floating point property that controls the output amplitude in dBm. This property can be
+           set.""",
         validator=strict_range,
-        values=list(map(lambda x: round(20 * log10(x / 2 / sqrt(0.1)), 2), [20e-3, 10])),
+        values=arange(-30, 23.9801, step=0.1e-3),
     )
 
     amp_vrms = Instrument.control(
         "voltage:amplitude?",
         "voltage:amplitude %eVRMS",
-        """ A floating point property that controls the output amplitude
-            in Vrms. This property can be set.""",
-        validator=strict_range,
-        values=list(map(lambda x: round(x / 2 / sqrt(2), 3), [20e-3, 10])),
+        """Floating point property that controls the output amplitude in Vrms. This property can be
+           set.""",
+        validator=truncated_discrete_set,
+        values=arange(7.1e-3, 3.5361, step=0.1e-3),
     )
 
     offset = Instrument.control(
         "voltage:offset?",
         "voltage:offset %e",
-        """ A floating point property that controls the amplitude
-            offset. It is always in Volt. This property can be set.""",
+        """Floating point property that controls the amplitude  offset. It is always in volts. This
+           property can be set.""",
     )
 
-    frequency = Instrument.control(
-        "frequency:fixed?",
-        "frequency:fixed %e",
-        """ A floating point property that controls the frequency.
-            This property can be set.""",
-        validator=strict_range,
-        values=[1e-6, 150e6],  # frequeny limit for sinusoidal function
-    )
+    @property
+    def frequency(self):
+        "Floating point property that controls the frequency. This property can be set."
+        return self.values("FREQ:FIX?")[0]
+
+    @frequency.setter
+    def frequency(self, value):
+        value = strict_range(value, self.instrument._validator_values["frequency"])
+        self.write(f"FRWQ:FIX {value:.6E}")
 
     duty = Instrument.control(
         "pulse:dcycle?",
         "pulse:dcycle %.3f",
-        """ A floating point property that controls the duty
-            cycle of pulse. This property can be set.""",
+        """Floating point property that controls the duty cycle ofa  pulse. This property can be
+           set.""",
         validator=strict_range,
         values=[0.001, 99.999],
     )
@@ -145,9 +146,8 @@ class Channel:
     impedance = Instrument.control(
         "output:impedance?",
         "output:impedance %d",
-        """ A floating point property that controls the output
-            impedance of the channel. Be careful with this.
-            This property can be set.""",
+        """Floating point property that controls the output impedance of the channel. Be careful
+           with this. This property can be set.""",
         validator=strict_range,
         values=[1, 1e4],
         cast=int,
@@ -161,27 +161,43 @@ class Channel:
         self.write(f"voltage:amplitude {amplitude:.6E}{units}")
         self.instrument.write("voltage:offset {offset:.6E}V")
 
-
-class AFG3152C(Instrument):
-    """Represents the Tektronix AFG 3000 series (one or two channels)
-    arbitrary function generator and provides a high-level for
-    interacting with the instrument.
-
-        afg=AFG3152C("GPIB::1")        # AFG on GPIB 1
-        afg.reset()                    # Reset to default
-        afg.ch1.shape='sinusoidal'     # Sinusoidal shape
-        afg.ch1.unit='VPP'             # Sets CH1 unit to VPP
-        afg.ch1.amp_vpp=1              # Sets the CH1 level to 1 VPP
-        afg.ch1.frequency=1e3          # Sets the CH1 frequency to 1KHz
-        afg.ch1.enable()               # Enables the output from CH1
+class AFG3100Series(Instrument):
+    """
+    Represents an arbitrary function generator from the Tektronix AFG3000(C) series.
     """
 
-    def __init__(self, adapter, **kwargs):
-        super().__init__(
-            adapter, "Tektronix AFG3152C arbitrary function generator", includeSCPI=True, **kwargs
-        )
+    def __init__(self, adapter, name, **kwargs):
+        super().__init__(adapter, name=name, includeSCPI=True, **kwargs)
         self.ch1 = Channel(self, 1)
         self.ch2 = Channel(self, 2)
 
     def beep(self):
         self.write("system:beep")
+
+    def generate_trigger(self):
+        """Generate a trigger event."""
+        self.write("*TRG")
+
+    waveform_catalog = Instrument.measurement(
+        "DATA:CAT?", "Names of user waveform memory and edit memory"
+    )
+
+
+class AFG3102(AFG3100Series):
+    __doc__ = AFG3100Series.__doc__
+
+    def __init__(self, adapter, **kwargs):
+        super().__init__(adapter, "Tektronix AFG3102", **kwargs)
+        self._validator_values = {
+            "frequency": [1e-6, 100e6],
+        }
+
+
+class AFG3152C(AFG3100Series):
+    __doc__ = AFG3100Series.__doc__
+
+    def __init__(self, adapter, **kwargs):
+        super().__init__(adapter, "Tektronix AFG3152C", **kwargs)
+        self._validator_values = {
+            "frequency": [1e-6, 150e6],
+        }
