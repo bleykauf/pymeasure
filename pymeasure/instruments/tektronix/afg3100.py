@@ -24,9 +24,11 @@
 
 import numpy as np
 from pymeasure.instruments import Instrument
-from pymeasure.instruments.validators import (strict_discrete_set,
-                                              strict_range,
-                                              truncated_discrete_set)
+from pymeasure.instruments.validators import (
+    strict_discrete_set,
+    strict_range,
+    truncated_discrete_set,
+)
 
 
 class Channel:
@@ -78,6 +80,7 @@ class Channel:
             "user2": "USER2",
             "user3": "USER3",
             "user4": "USER4",
+            "emem": "EMEM",
         },
         map_values=True,
     )
@@ -132,7 +135,7 @@ class Channel:
     @frequency.setter
     def frequency(self, value):
         value = strict_range(value, self.instrument._validator_values["frequency"])
-        self.write(f"FRWQ:FIX {value:.6E}")
+        self.write(f"FREQ:FIX {value:.6E}")
 
     duty = Instrument.control(
         "pulse:dcycle?",
@@ -153,13 +156,32 @@ class Channel:
         cast=int,
     )
 
-    def waveform(self, shape="SIN", frequency=1e6, units="VPP", amplitude=1, offset=0):
-        """General setting method for a complete wavefunction"""
-        self.write(f"function:shape {shape}")
-        self.write(f"frequency:fixed {frequency:.6E}")
-        self.write(f"voltage:unit {units}%s")
-        self.write(f"voltage:amplitude {amplitude:.6E}{units}")
-        self.instrument.write("voltage:offset {offset:.6E}V")
+    def waveform(self, shape="sinusoidal", frequency=1e6, units="VPP", amplitude=1, offset=0):
+        """
+        Set all parameters necessary for loading a waveform to the channel.
+
+        :param shape: one of the default shapes (e.g. 'gaussian'), a user memory slot (e.g.
+            'user2') or edit memory ('emem')
+        :type shape: str
+        :param frequency: frequency of the waveform in hertz, default 1 MHz
+        :type frequency: float
+        :param units: unit for the amplitude, 'VPP' (default), 'VRMS' or 'DBM'
+        :type units: str
+        :param amplitude: amplitude of the waveform, see also `units`.
+        :type amplitude: float
+        :param offset: Offset of the waveform in volts
+        :type offset: float
+        """
+        self.shape = shape
+        self.frequency = frequency
+        self.unit = units
+        if self.unit == "VPP":
+            self.amp_vpp = amplitude
+        elif self.unit == "VRMS":
+            self.amp_vrms = amplitude
+        elif self.unit == "DBM":
+            self.amp_dbm = amplitude
+        self.offset = offset
 
 
 class EditMemory:
