@@ -150,6 +150,33 @@ class Channel:
         cast=int,
     )
 
+    burst_mode_enabled = Instrument.control(
+        "BURS:STAT?",
+        "BURST:STAT %s",
+        "Enable (True) or disable (False) burst mode.",
+        validator=strict_discrete_set,
+        values={False: 0, True: 1},
+        map_values=True,
+    )
+
+    burst_mode = Instrument.control(
+        "BURS:MODE?",
+        "BURS:MODE %s",
+        "Burst mode can be either TRIGerred or GATed.",
+        validator=strict_discrete_set,
+        values=["TRIG", "GAT"],
+    )
+
+    n_cycles = Instrument.control(
+        "BURS:NCYC?",
+        "BURS:NCYC %s",
+        "Number of cycles (burst count) to be output in burst mode.",
+        validator=strict_discrete_set,
+        # FIXME: returns 9.9E37 for infinity, should be mapped to "INF"
+        values=["INF", "MIN", "MAX", *list(range(1, int(1e6)))],
+        cast=int,
+    )
+
     def waveform(self, shape="SIN", frequency=1e6, amplitude=None, unit=None, offset=0):
         """
         Set all parameters necessary for loading a waveform to the channel.
@@ -281,7 +308,20 @@ class AFG3100Series(Instrument):
 
     def generate_trigger(self):
         """Generate a trigger event."""
+        # FIXME: not sure what this actually does, not the same as TRIG
         self.write("*TRG")
+
+    def force_trigger(self):
+        """Force a trigger event to occur."""
+        self.write("TRIG")
+
+    trigger_source = Instrument.control(
+        "TRIG:SOUR?",
+        "TRIG:SOUR %s",
+        "Trigger source is TIMer or EXTernal.",
+        validator=strict_discrete_set,
+        values=["TIM", "EXT"],
+    )
 
     waveform_catalog = Instrument.measurement(
         "DATA:CAT?", "Names of user waveform memory and edit memory"
