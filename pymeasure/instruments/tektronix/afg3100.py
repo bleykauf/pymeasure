@@ -22,13 +22,11 @@
 # THE SOFTWARE.
 #
 
-from numpy import arange
+import numpy as np
 from pymeasure.instruments import Instrument
-from pymeasure.instruments.validators import (
-    strict_discrete_set,
-    strict_range,
-    truncated_discrete_set,
-)
+from pymeasure.instruments.validators import (strict_discrete_set,
+                                              strict_range,
+                                              truncated_discrete_set)
 
 
 class Channel:
@@ -98,7 +96,7 @@ class Channel:
         """Floating point property that controls the output amplitude in Vpp. This property can be
            set.""",
         validator=strict_range,
-        values=arange(20e-3, 10.0001, step=0.1e-3),
+        values=np.arange(20e-3, 10.0001, step=0.1e-3),
     )
 
     amp_dbm = Instrument.control(
@@ -107,7 +105,7 @@ class Channel:
         """Floating point property that controls the output amplitude in dBm. This property can be
            set.""",
         validator=strict_range,
-        values=arange(-30, 23.9801, step=0.1e-3),
+        values=np.arange(-30, 23.9801, step=0.1e-3),
     )
 
     amp_vrms = Instrument.control(
@@ -116,7 +114,7 @@ class Channel:
         """Floating point property that controls the output amplitude in Vrms. This property can be
            set.""",
         validator=truncated_discrete_set,
-        values=arange(7.1e-3, 3.5361, step=0.1e-3),
+        values=np.arange(7.1e-3, 3.5361, step=0.1e-3),
     )
 
     offset = Instrument.control(
@@ -213,6 +211,21 @@ class EditMemory:
         source = strict_discrete_set(source, ["USER1", "USER2", "USER3", "USER4"])
         self.write(f"DATA:COPY EMEM,{source}")
 
+    @property
+    def waveform(self):
+        """Set or get the waveform in the edit memory."""
+        return self.instrument.adapter.connection.query_binary_values(
+            "DATA:DATA? EMEM", datatype="H", is_big_endian=True, container=list
+        )
+
+    @waveform.setter
+    def waveform(self, waveform):
+        if (len(waveform) < 2) or (len(waveform) > 131073):
+            raise ValueError("Length of the waveform must be between 2 and 131073.")
+        self.instrument.adapter.connection.write_binary_values(
+            "DATA:DATA EMEM,", waveform, datatype="H", is_big_endian=True
+        )
+
     def save_waveform(self, destination):
         """
         Copy the contents of edit memory to a specified user waveform memory.
@@ -221,6 +234,22 @@ class EditMemory:
         """
         self.destination = strict_discrete_set(destination, ["USER1", "USER2", "USER3", "USER4"])
         self.write(f"DATA:COPY {destination},EMEM")
+
+    @staticmethod
+    def normalize_waveform(waveform):
+        """
+        Normalize a waveform to span the vertical resolution of the AFG.
+
+        :param waveform: unnormalized waveform
+        :type sequence: list-like of numeric
+        :return: normalized waveform.
+        :rtype: ndarray of int
+        """
+
+        resolution = 16383  # 14 bit
+        waveform = waveform - min(waveform)
+        norm_waveform = waveform / max(waveform) * resolution
+        return norm_waveform.astype(np.int)
 
 
 class AFG3100Series(Instrument):
