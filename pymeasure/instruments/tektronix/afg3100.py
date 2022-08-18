@@ -24,9 +24,11 @@
 
 from numpy import arange
 from pymeasure.instruments import Instrument
-from pymeasure.instruments.validators import (strict_discrete_set,
-                                              strict_range,
-                                              truncated_discrete_set)
+from pymeasure.instruments.validators import (
+    strict_discrete_set,
+    strict_range,
+    truncated_discrete_set,
+)
 
 
 class Channel:
@@ -161,6 +163,66 @@ class Channel:
         self.write(f"voltage:amplitude {amplitude:.6E}{units}")
         self.instrument.write("voltage:offset {offset:.6E}V")
 
+
+class EditMemory:
+    """Represents the edit memory of the instrument."""
+
+    def __init__(self, instrument):
+        self.instrument = instrument
+
+    def ask(self, command):
+        return self.instrument.ask(command)
+
+    def read(self):
+        return self.instrument.read()
+
+    def write(self, command):
+        self.instrument.write(command)
+
+    def values(self, command, **kwargs):
+        """
+        Read a set of values from the instrument through the adapter, passing on any keyword
+        arguments.
+        """
+        return self.instrument.values(command, **kwargs)
+
+    waveform_length = Instrument.control(
+        "DATA:POIN? EMEM",
+        "DATA:POIN EMEM, %d",
+        "Set or query the number of data points for the waveform created in the edit memory.",
+        validator=strict_discrete_set,
+        values=[*"MIN", "MAX", *list(range(2, 131073))],
+    )
+
+    min_waveform_length = Instrument.measurement(
+        "DATA:POIN? EMEM, MIN",
+        "Minimum number of data points for a waveform created in the edit memory.",
+    )
+
+    max_waveform_length = Instrument.measurement(
+        "DATA:POIN? EMEM, MAX",
+        "Maximum number of data points for a waveform created in the edit memory.",
+    )
+
+    def load_waveform(self, source):
+        """
+        Load the contents of a user waveform memory to edit memory.
+
+        :param source: the source memory to copy from, "USER1", "USER2", "USER3", "USER4"
+        """
+        source = strict_discrete_set(source, ["USER1", "USER2", "USER3", "USER4"])
+        self.write(f"DATA:COPY EMEM,{source}")
+
+    def save_waveform(self, destination):
+        """
+        Copy the contents of edit memory to a specified user waveform memory.
+
+        :param destination: the destination memory to copy to, "USER1", "USER2", "USER3", "USER4"
+        """
+        self.destination = strict_discrete_set(destination, ["USER1", "USER2", "USER3", "USER4"])
+        self.write(f"DATA:COPY {destination},EMEM")
+
+
 class AFG3100Series(Instrument):
     """
     Represents an arbitrary function generator from the Tektronix AFG3000(C) series.
@@ -170,6 +232,7 @@ class AFG3100Series(Instrument):
         super().__init__(adapter, name=name, includeSCPI=True, **kwargs)
         self.ch1 = Channel(self, 1)
         self.ch2 = Channel(self, 2)
+        self.edit_memory = EditMemory(self)
 
     def beep(self):
         self.write("system:beep")
