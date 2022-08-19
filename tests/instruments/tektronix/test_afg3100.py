@@ -36,8 +36,8 @@ def test_shape():
          ("source2:function:shape HAV", None),
          ],
     ) as inst:
-        assert inst.ch1.shape == 'lorentz'
-        inst.ch2.shape = 'haversine'
+        assert inst.ch1.shape == "LOR"
+        inst.ch2.shape = "HAV"
 
 
 def test_beep():
