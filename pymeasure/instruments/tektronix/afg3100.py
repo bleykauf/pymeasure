@@ -94,7 +94,7 @@ class Channel:
 
     @property
     def amplitude(self):
-        """"
+        """
         The amplitude of the waveform.
 
         Unit depends on the current value of the `unit` attribute. This attribute can either be set
@@ -120,7 +120,9 @@ class Channel:
         self.write(f"VOLT:AMPL {value}{unit}")
 
     offset = Instrument.control(
-        "voltage:offset?", "voltage:offset %e", "Amplitude  offset in volts",
+        "voltage:offset?",
+        "voltage:offset %e",
+        "Amplitude  offset in volts",
     )
 
     @property
@@ -305,11 +307,6 @@ class AFG3100Series(Instrument):
 
     def beep(self):
         self.write("system:beep")
-
-    def generate_trigger(self):
-        """Generate a trigger event."""
-        # FIXME: not sure what this actually does, not the same as TRIG
-        self.write("*TRG")
 
     def force_trigger(self):
         """Force a trigger event to occur."""
