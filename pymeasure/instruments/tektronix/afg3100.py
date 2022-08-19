@@ -255,7 +255,7 @@ class EditMemory:
 
     @property
     def waveform(self):
-        """Set or get the waveform in the edit memory."""
+        """The waveform in the edit memory."""
         return self.instrument.adapter.connection.query_binary_values(
             "DATA:DATA? EMEM", datatype="H", is_big_endian=True, container=list
         )
