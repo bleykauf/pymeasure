@@ -22,6 +22,8 @@
 # THE SOFTWARE.
 #
 
+from abc import ABC
+
 import numpy as np
 from pymeasure.instruments import Instrument
 from pymeasure.instruments.validators import (
@@ -35,6 +37,9 @@ class Channel:
     def __init__(self, instrument, number):
         self.instrument = instrument
         self.number = number
+        self.burst_mode = BurstMode(self.instrument, self.number)
+        self.pulse_mode = PulseMode(self.instrument, self.number)
+        self.sweep_mode = SweepMode(self.instrumet, self.number)
 
     def ask(self, command):
         return self.instrument.ask(f"source{self.number}:{command}")
@@ -144,47 +149,12 @@ class Channel:
         value = strict_range(value, self.instrument._validator_values["frequency"])
         self.write(f"FREQ:FIX {value:.6E}")
 
-    duty = Instrument.control(
-        "pulse:dcycle?",
-        "pulse:dcycle %.3f",
-        "Dduty cycle of a  pulse. ",
-        validator=strict_range,
-        values=[0.001, 99.999],
-    )
-
     impedance = Instrument.control(
         "output:impedance?",
         "output:impedance %d",
         "Output impedance of the channel.",
         validator=strict_discrete_set,
         values=range(1, 10001),
-        cast=int,
-    )
-
-    burst_mode_enabled = Instrument.control(
-        "BURS:STAT?",
-        "BURST:STAT %s",
-        "Enable (True) or disable (False) burst mode.",
-        validator=strict_discrete_set,
-        values={False: 0, True: 1},
-        map_values=True,
-    )
-
-    burst_mode = Instrument.control(
-        "BURS:MODE?",
-        "BURS:MODE %s",
-        "Burst mode can be either TRIGerred or GATed.",
-        validator=strict_discrete_set,
-        values=["TRIG", "GAT"],
-    )
-
-    n_cycles = Instrument.control(
-        "BURS:NCYC?",
-        "BURS:NCYC %s",
-        "Number of cycles (burst count) to be output in burst mode.",
-        validator=strict_discrete_set,
-        # FIXME: returns 9.9E37 for infinity, should be mapped to "INF"
-        values=["INF", "MIN", "MAX", *list(range(1, int(1e6)))],
         cast=int,
     )
 
@@ -211,6 +181,179 @@ class Channel:
         if amplitude:
             self.amplitude = amplitude
         self.offset = offset
+
+
+class Mode(ABC):
+    """Represents a mode of the channel. Must be subclassed by a specific mode."""
+
+    def __init__(self, instrument, channel_number):
+        self.instrument = instrument
+        self.channel_number = channel_number
+
+    def ask(self, command):
+        return self.instrument.ask(f"SOUR{self.channel_number}:{command}")
+
+    def read(self):
+        return self.instrument.read()
+
+    def write(self, command):
+        self.instrument.write(f"SOUR{self.channel_number}:{command}")
+
+    def values(self, command, **kwargs):
+        """
+        Read a set of values from the instrument through the adapter, passing on any keyword
+        arguments.
+        """
+        return self.instrument.values(
+            f"source{self.channel_number}:{command}", **kwargs
+        )
+
+
+class BurstMode(Mode):
+    """Represents the burst mode."""
+
+    enabled = Instrument.control(
+        "SWEE:STAT?",
+        "SWEE:STAT %s",
+        "Enable (True) or disable (False) burst mode.",
+        validator=strict_discrete_set,
+        values={False: 0, True: 1},
+        map_values=True,
+    )
+
+    mode = Instrument.control(
+        "SWEE:MODE?",
+        "SWEE:MODE %s",
+        "Burst mode can be either TRIGerred or GATed.",
+        validator=strict_discrete_set,
+        values=["TRIG", "GAT"],
+    )
+
+    n_cycles = Instrument.control(
+        "NCYC?",
+        "NCYC %s",
+        "Number of cycles (burst count) to be output in burst mode.",
+        validator=strict_discrete_set,
+        # FIXME: returns 9.9E37 for infinity, should be mapped to "INF"
+        values=["INF", "MIN", "MAX", *list(range(1, int(1e6)))],
+        cast=int,
+    )
+
+
+class PulseMode(Mode):
+    """Represents the pulse mode."""
+
+    duty_cycle = Instrument.control(
+        "PULS:DCYC?",
+        "PULS:DCYC %.3f",
+        "Duty cycle of a  pulse. ",
+        validator=strict_range,
+        values=[0.001, 99.999],
+    )
+
+
+class SweepMode(Mode):
+    """Represents the sweep mode."""
+
+    mode = Instrument.control(
+        "SWE:MODE?",
+        "SWE:MODE %s",
+        """
+        Sweep mode can be either AUTO or MANual.
+        In AUTO mode, the instrument outputs a continuous sweep at the rate specified by
+        `sweep_time`, `hold_time` and `return_time`.
+        In MANual mode, the instrument outputs one sweep when the trigger input is received.
+        """,
+        validator=strict_discrete_set,
+        values=["AUTO", "MAN"],
+    )
+
+    frequency_center = Instrument.control(
+        "FREQ:CENT?",
+        "FREQ:CENT %s",
+        """
+        Center frequency of the sweep in hertz or "MIN", "MAX". Range depends on the selected
+        waveform, see Quick Start User Manual.
+        """,
+    )
+
+    frequency_span = Instrument.control(
+        "FREQ:SPAN?",
+        "FREQ:SPAN} %s",
+        """
+        Frequency span of the sweep in hertz or "MIN", "MAX". Range depends on the selected
+        waveform, see Quick Start User Manual.
+        """,
+    )
+
+    frequency_start = Instrument.control(
+        "FREQ:STAR?",
+        "FREQ:STAR %s",
+        """
+        Start frequency of the sweep in hertz or "MIN", "MAX". Range depends on the selected
+        waveform, see Quick Start User Manual.
+        """,
+    )
+
+    frequency_stop = Instrument.control(
+        "FREQ:STOP?",
+        "FREQ:STOP %s",
+        """
+        Stop frequency of the sweep in hertz or "MIN", "MAX". Range depends on the selected
+        waveform, see Quick Start User Manual.
+        """,
+    )
+
+    min_hold_time = Instrument.measurement(
+        "SWE:HTIM? MIN", "Minimum hold time in seconds."
+    )
+
+    max_hold_time = Instrument.measurement(
+        "SWE:HTIM? MAX?", "Maximum hold time in seconds."
+    )
+
+    hold_time = Instrument.control(
+        "SWE:HTIM?",
+        "SWE:HTIM %s",
+        """
+        Sweep hold time in seconds, i.e. the amount of time that the freqeuncy must remain stable
+        after reaching the stop frequency. Can be set to "MIN" or "MAX".
+        """,
+    )
+
+    min_return_time = Instrument.measurement(
+        "SWE:RTIM? MIN", "Minimum return time in seconds."
+    )
+
+    max_return_time = Instrument.measurement(
+        "SWE:RTIM? MAX?", "Maximum return time in seconds."
+    )
+
+    return_time = Instrument.control(
+        "SWE:RTIM?",
+        "SWE:RTIM %s",
+        """
+        Sweep return time in seconds, i.e. the amount of time from stop frequency through start
+        frequency. Does not include hold time.
+        """,
+    )
+
+    spacing = Instrument.control(
+        "SWE:SPAC?",
+        "SWE:SPAC %s",
+        "Sweep spacing can be either LINear or LOGarithic.",
+        validator=strict_discrete_set,
+        values=["LIN", "LOG"],
+    )
+
+    time = Instrument.control(
+        "SWE:TIME?",
+        "SWE:TIME %s",
+        """
+        Sweep time in seconds can range from 1 ms to 300 s or can be set to "MIN", "MAX". Does not
+        include hold and return time.
+        """,
+    )
 
 
 class EditMemory:
