@@ -112,9 +112,13 @@ class Channel:
             unit = self.unit
         unit = strict_discrete_set(unit, ["VPP", "VRMS", "DBM"])
         if unit == "VPP":
-            value = truncated_discrete_set(value, np.arange(20e-3, 10.0001, step=0.1e-3))
+            value = truncated_discrete_set(
+                value, np.arange(20e-3, 10.0001, step=0.1e-3)
+            )
         elif unit == "VRMS":
-            value = truncated_discrete_set(value, np.arange(7.1e-3, 3.5361, step=0.1e-3))
+            value = truncated_discrete_set(
+                value, np.arange(7.1e-3, 3.5361, step=0.1e-3)
+            )
         elif unit == "DBM":
             value = truncated_discrete_set(value, np.arange(-30, 23.9801, step=0.1e-3))
         self.write(f"VOLT:AMPL {value}{unit}")
@@ -183,8 +187,8 @@ class Channel:
         """
         Set all parameters necessary for loading a waveform to the channel.
 
-        :param shape: one of the default shapes (e.g. 'GAUS'), a user memory slot (e.g.
-            'USER') or edit memory ('EMEM')
+        :param shape: one of the default shapes (e.g. 'GAUS'), a user memory slot (e.g. 'USER') or
+            edit memory ('EMEM')
         :type shape: str
         :param frequency: frequency of the waveform in hertz, default 1 MHz
         :type frequency: float
@@ -226,27 +230,27 @@ class EditMemory:
         """
         return self.instrument.values(command, **kwargs)
 
-    waveform_length = Instrument.control(
+    shape_length = Instrument.control(
         "DATA:POIN? EMEM",
         "DATA:POIN EMEM, %d",
-        "Set or query the number of data points for the waveform created in the edit memory.",
+        "Set or query the number of data points for the shape created in the edit memory.",
         validator=strict_discrete_set,
         values=[*"MIN", "MAX", *list(range(2, 131073))],
     )
 
-    min_waveform_length = Instrument.measurement(
+    min_shape_length = Instrument.measurement(
         "DATA:POIN? EMEM, MIN",
-        "Minimum number of data points for a waveform created in the edit memory.",
+        "Minimum number of data points for a shape created in the edit memory.",
     )
 
-    max_waveform_length = Instrument.measurement(
+    max_shape_length = Instrument.measurement(
         "DATA:POIN? EMEM, MAX",
-        "Maximum number of data points for a waveform created in the edit memory.",
+        "Maximum number of data points for a shape created in the edit memory.",
     )
 
-    def load_waveform(self, source):
+    def load_shape(self, source):
         """
-        Load the contents of a user waveform memory to edit memory.
+        Load the contents of a user memory to edit memory.
 
         :param source: the source memory to copy from, "USER1", "USER2", "USER3", "USER4"
         """
@@ -254,44 +258,46 @@ class EditMemory:
         self.write(f"DATA:COPY EMEM,{source}")
 
     @property
-    def waveform(self):
+    def shape(self):
         """The waveform in the edit memory."""
         return self.instrument.adapter.connection.query_binary_values(
             "DATA:DATA? EMEM", datatype="H", is_big_endian=True, container=list
         )
 
-    @waveform.setter
-    def waveform(self, waveform):
+    @shape.setter
+    def shape(self, waveform):
         if (len(waveform) < 2) or (len(waveform) > 131073):
-            raise ValueError("Length of the waveform must be between 2 and 131073.")
+            raise ValueError("Length of the shape must be between 2 and 131073.")
         self.instrument.adapter.connection.write_binary_values(
             "DATA:DATA EMEM,", waveform, datatype="H", is_big_endian=True
         )
 
-    def save_waveform(self, destination):
+    def save_shape(self, destination):
         """
-        Copy the contents of edit memory to a specified user waveform memory.
+        Copy the contents of edit memory to a specified user memory.
 
         :param destination: the destination memory to copy to, "USER1", "USER2", "USER3", "USER4"
         """
-        self.destination = strict_discrete_set(destination, ["USER1", "USER2", "USER3", "USER4"])
+        self.destination = strict_discrete_set(
+            destination, ["USER1", "USER2", "USER3", "USER4"]
+        )
         self.write(f"DATA:COPY {destination},EMEM")
 
     @staticmethod
-    def normalize_waveform(waveform):
+    def normalize_shape(shape):
         """
         Normalize a waveform to span the vertical resolution of the AFG.
 
-        :param waveform: unnormalized waveform
+        :param shape: unnormalized shape
         :type sequence: list-like of numeric
-        :return: normalized waveform.
+        :return: normalized shape.
         :rtype: ndarray of int
         """
 
         resolution = 16383  # 14 bit
-        waveform = waveform - min(waveform)
-        norm_waveform = waveform / max(waveform) * resolution
-        return norm_waveform.astype(np.int)
+        shape = shape - min(shape)
+        norm_shape = shape / max(shape) * resolution
+        return norm_shape.astype(np.int)
 
 
 class AFG3100Series(Instrument):
