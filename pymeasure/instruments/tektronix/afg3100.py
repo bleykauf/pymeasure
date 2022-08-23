@@ -265,11 +265,11 @@ class EditMemory:
         )
 
     @shape.setter
-    def shape(self, waveform):
-        if (len(waveform) < 2) or (len(waveform) > 131073):
+    def shape(self, shape):
+        if (len(shape) < 2) or (len(shape) > 131073):
             raise ValueError("Length of the shape must be between 2 and 131073.")
         self.instrument.adapter.connection.write_binary_values(
-            "DATA:DATA EMEM,", waveform, datatype="H", is_big_endian=True
+            "DATA:DATA EMEM,", shape, datatype="H", is_big_endian=True
         )
 
     def save_shape(self, destination):
