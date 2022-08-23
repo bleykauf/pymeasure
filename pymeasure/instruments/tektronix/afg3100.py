@@ -63,6 +63,7 @@ class Channel:
         "function:shape %s",
         "Shape of the output, either a build-in shape, a user memory slot or the edit memory.",
         validator=strict_discrete_set,
+        set_process=lambda s: f"USER{s}" if isinstance(s, int) else s,
         values=[
             "SIN",
             "SQU",
@@ -80,6 +81,10 @@ class Channel:
             "USER2",
             "USER3",
             "USER4",
+            1,
+            2,
+            3,
+            4,
             "EMEM",
         ],
     )
@@ -248,15 +253,6 @@ class EditMemory:
         "Maximum number of data points for a shape created in the edit memory.",
     )
 
-    def load_shape(self, source):
-        """
-        Load the contents of a user memory to edit memory.
-
-        :param source: the source memory to copy from, "USER1", "USER2", "USER3", "USER4"
-        """
-        source = strict_discrete_set(source, ["USER1", "USER2", "USER3", "USER4"])
-        self.write(f"DATA:COPY EMEM,{source}")
-
     @property
     def shape(self):
         """The waveform in the edit memory."""
@@ -272,15 +268,32 @@ class EditMemory:
             "DATA:DATA EMEM,", shape, datatype="H", is_big_endian=True
         )
 
+    def load_shape(self, source):
+        """
+        Load the contents of a user memory to edit memory.
+
+        :param source: the source memory to copy from, "USER1", "USER2", "USER3", "USER4" or 1, 2,
+            3, 4
+        :type source: str or int
+        """
+        source = strict_discrete_set(
+            source, ["USER1", "USER2", "USER3", "USER4", 1, 2, 3, 4]
+        )
+        self.write(f"DATA:COPY EMEM,{source}")
+
     def save_shape(self, destination):
         """
         Copy the contents of edit memory to a specified user memory.
 
-        :param destination: the destination memory to copy to, "USER1", "USER2", "USER3", "USER4"
+        :param destination: the destination memory to copy to, "USER1", "USER2", "USER3", "USER4" or
+            1, 2, 3, 4
+        :type destination: str or int
         """
         self.destination = strict_discrete_set(
-            destination, ["USER1", "USER2", "USER3", "USER4"]
+            destination, ["USER1", "USER2", "USER3", "USER4", 1, 2, 3, 4]
         )
+        if isinstance(destination, int):
+            destination = f"USER{destination}"
         self.write(f"DATA:COPY {destination},EMEM")
 
     @staticmethod
