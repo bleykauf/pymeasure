@@ -39,7 +39,7 @@ class Channel:
         self.number = number
         self.burst_mode = BurstMode(self.instrument, self.number)
         self.pulse_mode = PulseMode(self.instrument, self.number)
-        self.sweep_mode = SweepMode(self.instrumet, self.number)
+        self.sweep_mode = SweepMode(self.instrument, self.number)
 
     def ask(self, command):
         return self.instrument.ask(f"source{self.number}:{command}")
@@ -122,13 +122,9 @@ class Channel:
             unit = self.unit
         unit = strict_discrete_set(unit, ["VPP", "VRMS", "DBM"])
         if unit == "VPP":
-            value = truncated_discrete_set(
-                value, np.arange(20e-3, 10.0001, step=0.1e-3)
-            )
+            value = truncated_discrete_set(value, np.arange(20e-3, 10.0001, step=0.1e-3))
         elif unit == "VRMS":
-            value = truncated_discrete_set(
-                value, np.arange(7.1e-3, 3.5361, step=0.1e-3)
-            )
+            value = truncated_discrete_set(value, np.arange(7.1e-3, 3.5361, step=0.1e-3))
         elif unit == "DBM":
             value = truncated_discrete_set(value, np.arange(-30, 23.9801, step=0.1e-3))
         self.write(f"VOLT:AMPL {value}{unit}")
@@ -204,9 +200,7 @@ class Mode(ABC):
         Read a set of values from the instrument through the adapter, passing on any keyword
         arguments.
         """
-        return self.instrument.values(
-            f"source{self.channel_number}:{command}", **kwargs
-        )
+        return self.instrument.values(f"source{self.channel_number}:{command}", **kwargs)
 
 
 class BurstMode(Mode):
@@ -304,13 +298,9 @@ class SweepMode(Mode):
         """,
     )
 
-    min_hold_time = Instrument.measurement(
-        "SWE:HTIM? MIN", "Minimum hold time in seconds."
-    )
+    min_hold_time = Instrument.measurement("SWE:HTIM? MIN", "Minimum hold time in seconds.")
 
-    max_hold_time = Instrument.measurement(
-        "SWE:HTIM? MAX?", "Maximum hold time in seconds."
-    )
+    max_hold_time = Instrument.measurement("SWE:HTIM? MAX?", "Maximum hold time in seconds.")
 
     hold_time = Instrument.control(
         "SWE:HTIM?",
@@ -321,13 +311,9 @@ class SweepMode(Mode):
         """,
     )
 
-    min_return_time = Instrument.measurement(
-        "SWE:RTIM? MIN", "Minimum return time in seconds."
-    )
+    min_return_time = Instrument.measurement("SWE:RTIM? MIN", "Minimum return time in seconds.")
 
-    max_return_time = Instrument.measurement(
-        "SWE:RTIM? MAX?", "Maximum return time in seconds."
-    )
+    max_return_time = Instrument.measurement("SWE:RTIM? MAX?", "Maximum return time in seconds.")
 
     return_time = Instrument.control(
         "SWE:RTIM?",
@@ -419,9 +405,7 @@ class EditMemory:
             3, 4
         :type source: str or int
         """
-        source = strict_discrete_set(
-            source, ["USER1", "USER2", "USER3", "USER4", 1, 2, 3, 4]
-        )
+        source = strict_discrete_set(source, ["USER1", "USER2", "USER3", "USER4", 1, 2, 3, 4])
         self.write(f"DATA:COPY EMEM,{source}")
 
     def save_shape(self, destination):
