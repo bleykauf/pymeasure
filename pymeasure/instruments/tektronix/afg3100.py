@@ -142,7 +142,7 @@ class Channel:
 
     @frequency.setter
     def frequency(self, value):
-        value = strict_range(value, self.instrument._validator_values["frequency"])
+        value = strict_range(value, self.instrument.frequency_values)
         self.write(f"FREQ:FIX {value:.6E}")
 
     impedance = Instrument.control(
@@ -476,9 +476,8 @@ class AFG3102(AFG3100Series):
 
     def __init__(self, adapter, **kwargs):
         super().__init__(adapter, "Tektronix AFG3102", **kwargs)
-        self._validator_values = {
-            "frequency": [1e-6, 100e6],
-        }
+
+    frequency_values = [1e-6, 100e6]
 
 
 class AFG3152C(AFG3100Series):
@@ -486,6 +485,5 @@ class AFG3152C(AFG3100Series):
 
     def __init__(self, adapter, **kwargs):
         super().__init__(adapter, "Tektronix AFG3152C", **kwargs)
-        self._validator_values = {
-            "frequency": [1e-6, 150e6],
-        }
+
+    frequency_values = [1e-6, 150e6]
