@@ -26,8 +26,11 @@ import logging
 
 import numpy as np
 from pymeasure.instruments import Instrument
-from pymeasure.instruments.validators import (strict_discrete_set,
-                                              truncated_discrete_set)
+from pymeasure.instruments.validators import (
+    strict_discrete_range,
+    strict_discrete_set,
+    truncated_discrete_set,
+)
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -71,6 +74,30 @@ class T3DS01204(Instrument):
         "The number of data points that the hardware will acquire from the input"
         "signal. The number of points acquired is based on the horizontal scale and"
         "memory/acquisition depth selections",
+    )
+
+    memory_size = Instrument.control(
+        "MEMORY_SIZE?",
+        "MEMORY_SIZE %s",
+        "sets the memory depth",
+        validator=strict_discrete_set,
+        values=["7K", "70K", "700K", "7M"],
+    )
+
+    average_acquire = Instrument.control(
+        "AVERAGE_ACQUIRE?",
+        "AVERAGE_ACQUIRE %s",
+        "sets the average times of average acquisition, time={4,16,32,...,1024}.",
+        validator=strict_discrete_set,
+        values=[2**x for x in range(2, 11) if x != 3],
+    )
+
+    interpolation = Instrument.control(
+        "SINXX_SAMPLE?",
+        "SINXX_SAMPLE %s",
+        "sets the interpolation to either sin(x)/x : True or x : False.",
+        values={True: "ON", False: "OFF"},
+        map_values=True,
     )
 
     # AUTOSET commands -----------------------------------------------------------------
@@ -145,7 +172,7 @@ class T3DS01204(Instrument):
         """
         Select the condition that will trigger the acqusition of the waveforms.
 
-        Depending on the trigger type, additional parameters must be specified. 
+        Depending on the trigger type, additional parameters must be specified.
         """
         # checking for valid trigger type
         trigger_type = strict_discrete_set(
@@ -281,3 +308,27 @@ class T3DS01204(Instrument):
                 + np.arange(len(y)) * 1 / self.instrument.sample_rate
             )
             return x, y
+
+    # SAVE Commands---------------------------------------------------
+    def save(self, num):
+        """stores the complete front-panel setup of the instrument in the internal memory"""
+        num = strict_discrete_range(num, (1, 20), 1)
+        self.write(f"*SAV {num}")
+
+    # RECALL Commands--------------------------------------------------
+    def recall(self, setup_num):
+        """Recalls the complete front-panel setup of the instrument from internal memory,
+        using one of the twenty non- volatile panel setups.
+        This command is opposite to save"""
+        setup_num = strict_discrete_range(setup_num, (1, 20), 1)
+        self.write(f"*RCL {setup_num}")
+
+    # MATH commands-------------------------------------------------------
+    define = Instrument.control(
+        "DEFINE?",
+        "DEFINE %s",
+        "Define an equation.",
+        set_process=lambda v: f"EQN,'{v}'",
+        get_process=lambda v: v[1].strip("'"),
+        map_values=False,
+    )
