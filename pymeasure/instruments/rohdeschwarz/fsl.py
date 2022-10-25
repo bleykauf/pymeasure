@@ -51,9 +51,7 @@ class FSL(Instrument):
     """
 
     def __init__(self, adapter, **kwargs):
-        super().__init__(
-            adapter, "Rohde&Schwarz FSL", includeSCPI=True, **kwargs
-        )
+        super().__init__(adapter, "Rohde&Schwarz FSL", includeSCPI=True, **kwargs)
 
     # Frequency settings ------------------------------------------------------
 
@@ -201,9 +199,7 @@ class FSL(Instrument):
             Reads a set of values from the instrument through the adapter,
             passing on any keyword arguments.
             """
-            return self.instrument.values(
-                f"CALC:{self.name}:{command}", **kwargs
-            )
+            return self.instrument.values(f"CALC:{self.name}:{command}", **kwargs)
 
         def activate(self):
             """Activate a marker."""
@@ -217,9 +213,7 @@ class FSL(Instrument):
             "X?", "X %s", "Position of marker on the frequency axis in Hz."
         )
 
-        y = Instrument.control(
-            "Y?", "Y %s", "Amplitude of the marker position in dBm."
-        )
+        y = Instrument.control("Y?", "Y %s", "Amplitude of the marker position in dBm.")
 
         peak_excursion = Instrument.control(
             "PEXC?",
@@ -257,3 +251,24 @@ class FSL(Instrument):
                 passed it is interpreted as a frequency span.
             """
             self.write(f"FUNC:ZOOM {value}; *WAI")
+
+    # Channels -----------------------------------------------------------------
+
+    def create_channels(self, channel_type, channel_name):
+        self.write(f"INST:CRE:NEW{channel_type, channel_name} %s")
+
+    def list_channels(self):
+        return self.values("INST:LIST?")
+
+    def delete_channels(self, channel_name):
+        self.write(f"INST:DEL{channel_name}")
+
+    def create_dictionary(self, a):
+        set_keys = []
+        set_values = []
+        for index in range(0, len(a) - 1, 2):
+            set_keys.append(a[index].strip("'"))
+            set_values.append(a[index + 1].strip("'"))
+
+        dictionary = dict(zip(set_keys, set_values))
+        return dictionary
