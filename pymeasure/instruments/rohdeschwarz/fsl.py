@@ -253,23 +253,32 @@ class FSL(Instrument):
     # Channels -----------------------------------------------------------------
 
     def create_channel(self, channel_type, channel_name):
-        self.write(f"INST:CRE:NEW {channel_type}, {channel_name}")
+        strict_discrete_set(channel_type, list(["PNOISE", "SANALYZER"]))
+        self.write(f"INST:CRE:NEW {channel_type}, '{channel_name}'")
 
     def show_channels(self):
         raw_list = self.values("INST:LIST?")
-        processed_dict = self.create_dictionary(raw_list)
+        processed_dict = self._channellist_to_dictionary(raw_list)
         return processed_dict
 
     def delete_channel(self, channel_name):
         channels = self.show_channels()
         strict_discrete_set(channel_name, list(channels.keys()))
-        self.write(f"INST:DEL {channel_name}")
+        self.write(f"INST:DEL '{channel_name}'")
 
-    def create_dictionary(self, raw):
+    """def _create_dictionary(self, raw):
         d = {}
         for index in range(0, len(raw) - 1, 2):
             set_values = raw[index].strip("'")
             set_keys = raw[index + 1].strip("'")
 
             d[set_keys] = set_values
+        return d"""
+
+    def _channellist_to_dictionary(self, raw):
+        d = {}
+        d = {
+            set_keys.strip("'"): set_values.strip("'")
+            for (set_values, set_keys) in zip(raw[1 - 1 :: 2], raw[2 - 1 :: 2])
+        }
         return d
