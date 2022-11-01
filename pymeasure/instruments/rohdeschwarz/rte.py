@@ -22,7 +22,15 @@
 # THE SOFTWARE.
 #
 
-from .fsl import FSL
-from .hmp import HMP4040
-from .rte import RTE
-from .sfm import SFM
+import logging
+
+from pymeasure.instruments.instrument import Instrument
+
+log = logging.getLogger(__name__)
+log.addHandler(logging.NullHandler())
+
+
+class RTE(Instrument):
+    def __init__(self, adapter, **kwargs):
+        kwargs.setdefault("name", "Rohde&Schwarz RTE")
+        super().__init__(adapter, includeSCPI=True, **kwargs)
