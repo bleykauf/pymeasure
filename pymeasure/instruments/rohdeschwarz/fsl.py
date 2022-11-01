@@ -269,3 +269,9 @@ class FSL(Instrument):
     def _channel_list_to_dict(self, raw):
         d = {key.strip("'"): value.strip("'") for (value, key) in zip(raw[0::2], raw[1::2])}
         return d
+
+    def select_channel_type(self, application):
+        self.write(f"INST:SEL '{application}'")
+
+    def rename_channel(self, current_name, new_name):
+        self.write(f"INST:REN '{current_name}', '{new_name}'")
