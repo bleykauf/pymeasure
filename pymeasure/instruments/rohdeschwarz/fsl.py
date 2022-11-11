@@ -25,7 +25,7 @@
 import logging
 
 import numpy as np
-from pymeasure.instruments.validators import strict_discrete_set
+from pymeasure.instruments.validators import strict_discrete_range, strict_discrete_set
 from pymeasure.instruments import Instrument
 
 log = logging.getLogger(__name__)
@@ -253,25 +253,73 @@ class FSL(Instrument):
     # Channels -----------------------------------------------------------------
 
     def create_channel(self, channel_type, channel_name):
+        """Create a new channel
+
+        Args:
+            channel_type (string): PNOISE or SANALYZER
+            channel_name (string): Phase Noise, Spectrum analyser, etc
+        """
+
         strict_discrete_set(channel_type, ["PNOISE", "SANALYZER"])
         self.write(f"INST:CRE:NEW {channel_type}, '{channel_name}'")
 
-    def show_channels(self):
-        raw_list = self.values("INST:LIST?")
-        processed_dict = self._channel_list_to_dict(raw_list)
-        return processed_dict
+    def _channel_list_to_dict(raw):
+        """Create a dictionary of open channels and their types
+        Args:
+            raw (list): list of channel names and channel types
+
+        Returns:
+            dictionary : dictionary with channel_name : channel_type
+        """
+        d = {
+            set_keys.strip("'"): set_values.strip("'")
+            for (set_values, set_keys) in zip(raw[0::2], raw[1::2])
+        }
+
+        return d
+
+    show_channels = Instrument.measurement(
+        "INST:LIST?",
+        "To print a dictionary of open channels and their types",
+        get_process=_channel_list_to_dict,
+    )
 
     def delete_channel(self, channel_name):
-        channels = self.show_channels()
+        """Deletes a channel
+
+        Args:
+            channel_name (string): name of the channel to be deleted
+        """
+        channels = self.show_channels
         strict_discrete_set(channel_name, list(channels.keys()))
         self.write(f"INST:DEL '{channel_name}'")
 
-    def _channel_list_to_dict(self, raw):
-        d = {key.strip("'"): value.strip("'") for (value, key) in zip(raw[0::2], raw[1::2])}
-        return d
+    def select_channel(self, channel_name):
+        """Selects an open channel
 
-    def select_channel_type(self, application):
-        self.write(f"INST:SEL '{application}'")
+        Args:
+            channel_name (string): name of the channel to be selected
+        """
+        self.write(f"INST:SEL '{channel_name}'")
+
+    # active_channel = Instrument.control("INST?", "INST %s", "To get the active channel")
 
     def rename_channel(self, current_name, new_name):
+        """Renames an open channel
+        Args:
+            current_name (string): channel to be renamed
+            new_name (String): new name of the channel
+        """
+        channels = self.show_channels
+        strict_discrete_set(current_name, list(channels.keys()))
         self.write(f"INST:REN '{current_name}', '{new_name}'")
+
+    # Phase noise limit lines --------------------------------------
+
+    def phase_noise_trace(self, trace):
+        strict_discrete_range(trace, range(1, 7), 1)
+        self.write(f"CALC:PNL:TRAC {trace}")
+
+    def select_trace(self, trace):
+        strict_discrete_range(trace, range(1, 7), 1)
+        self.write(f"DISP:TRAC:SEL {trace}")
