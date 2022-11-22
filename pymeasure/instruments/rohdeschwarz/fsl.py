@@ -278,9 +278,9 @@ class FSL(Instrument):
 
         return d
 
-    show_channels = Instrument.measurement(
+    available_channels = Instrument.measurement(
         "INST:LIST?",
-        "To print a dictionary of open channels and their types",
+        "Dictionary of open channels and their types",
         get_process=_channel_list_to_dict,
     )
 
@@ -290,7 +290,7 @@ class FSL(Instrument):
         Args:
             channel_name (string): name of the channel to be deleted
         """
-        channels = self.show_channels
+        channels = self.available_channels
         strict_discrete_set(channel_name, list(channels.keys()))
         self.write(f"INST:DEL '{channel_name}'")
 
@@ -302,7 +302,23 @@ class FSL(Instrument):
         """
         self.write(f"INST:SEL '{channel_name}'")
 
-    # active_channel = Instrument.control("INST?", "INST %s", "To get the active channel")
+    @property
+    def active_channel(self):
+        return self.values("INST?")[0]
+
+    @active_channel.setter
+    def activate_channel(self, channel):
+        availabel_channels = [chan for chan in self.available_channels.keys()]
+        channel = strict_discrete_set(channel, availabel_channels)
+        self.write(f"INST '{channel}'")
+
+    def view_mode(self, view="SPL"):
+        """To get a MultiView of the open channels or return to the last active channel
+        Args:
+            view (str, optional): To view MultiView. Defaults to "SPL". To go back to the last
+            active channel use "SING".
+        """
+        self.write(f"DISP:FORM {view}")
 
     def rename_channel(self, current_name, new_name):
         """Renames an open channel
@@ -310,7 +326,7 @@ class FSL(Instrument):
             current_name (string): channel to be renamed
             new_name (String): new name of the channel
         """
-        channels = self.show_channels
+        channels = self.available_channels
         strict_discrete_set(current_name, list(channels.keys()))
         self.write(f"INST:REN '{current_name}', '{new_name}'")
 
