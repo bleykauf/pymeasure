@@ -113,7 +113,7 @@ class FSL(Instrument):
     continuous_sweep = Instrument.control(
         "INIT:CONT?",
         "INIT:CONT %s",
-        "Continuous (True) or single sweep (False)",
+        "Continuous (True) ophase_noise_tracer single sweep (False)",
         validator=strict_discrete_set,
         values={True: 1, False: 0},
         map_values=True,
@@ -130,14 +130,25 @@ class FSL(Instrument):
     # Traces ------------------------------------------------------------------
 
     def read_trace(self, n_trace=1):
+
         """
         Read trace data.
 
         :param n_trace: The trace number (1-6). Default is 1.
         :return: 2d numpy array of the trace data, [[frequency], [amplitude]].
         """
-        y = np.array(self.values(f"TRAC{n_trace}? TRACE{n_trace}"))
-        x = np.linspace(self.freq_start, self.freq_stop, len(y))
+
+        dict = self.available_channels
+        if self.active_channel == ("PNO") or dict.get(self.active_channel) == "PNOISE":
+
+            y = np.array(self.values(f"TRAC? TRACE{n_trace}")[1::2])
+            x = np.array(self.values(f"TRAC? TRACE{n_trace}")[0::2])
+
+        elif self.active_channel == ("SAN") or dict.get(self.active_channel) == "SANALYZER":
+
+            y = np.array(self.values(f"TRAC? TRACE{n_trace}"))
+            x = np.linspace(self.freq_start, self.freq_stop, len(y))
+
         return np.array([x, y])
 
     trace_mode = Instrument.control(
@@ -304,6 +315,7 @@ class FSL(Instrument):
 
     @property
     def active_channel(self):
+
         return self.values("INST?")[0]
 
     @active_channel.setter
