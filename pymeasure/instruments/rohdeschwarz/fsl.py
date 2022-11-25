@@ -78,6 +78,9 @@ class FSL(Instrument):
         "FREQ:STOP %s",
         "Stop frequency in Hz.",
     )
+    nominal_level = Instrument.control(
+        "POW:RLEV?", "POW:RLEV %s", "Defines the nominal level of the R&S FSW"
+    )
 
     attenuation = Instrument.control(
         "INP:ATT?",
@@ -128,30 +131,6 @@ class FSL(Instrument):
         self.write("INIT:CONM; *WAI")
 
     # Traces ------------------------------------------------------------------
-    '''
-    def read_trace(self, n_trace=1):
-
-        """
-        Read trace data.
-
-        :param n_trace: The trace number (1-6). Default is 1.
-        :return: 2d numpy array of the trace data, [[frequency], [amplitude]].
-        """
-
-       
-        dict = self.available_channels
-        if self.active_channel == ("PNO") or dict.get(self.active_channel) == "PNOISE":
-
-            y = np.array(self.values(f"TRAC? TRACE{n_trace}")[1::2])
-            x = np.array(self.values(f"TRAC? TRACE{n_trace}")[0::2])
-
-        elif self.active_channel == ("SAN") or dict.get(self.active_channel) == "SANALYZER":
-
-            y = np.array(self.values(f"TRAC? TRACE{n_trace}"))
-            x = np.linspace(self.freq_start, self.freq_stop, len(y))
-
-        return np.array([x, y])
-'''
 
     def read_trace(self, n_trace=1):
 
@@ -373,16 +352,6 @@ class FSL(Instrument):
         map_values=True,
     )
 
-    '''
-    def view_mode(self, view="SPL"):
-        """To get a MultiView of the open channels or return to the last active channel
-        Args:
-            view (str, optional): To view MultiView. Defaults to "SPL". To go back to the last
-            active channel use "SING".
-        """
-        self.write(f"DISP:FORM {view}")
-    '''
-
     def rename_channel(self, current_name, new_name):
         """Renames an open channel
         Args:
@@ -402,8 +371,3 @@ class FSL(Instrument):
     def select_trace(self, trace):
         strict_discrete_range(trace, range(1, 7), 1)
         self.write(f"DISP:TRAC:SEL {trace}")
-
-    # Nominal Level
-
-    def nominal_level(freq_value):
-        self.write(f"POW:RLEV:VER")
