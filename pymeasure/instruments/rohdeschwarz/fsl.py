@@ -113,7 +113,7 @@ class FSL(Instrument):
     continuous_sweep = Instrument.control(
         "INIT:CONT?",
         "INIT:CONT %s",
-        "Continuous (True) ophase_noise_tracer single sweep (False)",
+        "Continuous (True) or phase_noise_tracer single sweep (False)",
         validator=strict_discrete_set,
         values={True: 1, False: 0},
         map_values=True,
@@ -128,7 +128,7 @@ class FSL(Instrument):
         self.write("INIT:CONM; *WAI")
 
     # Traces ------------------------------------------------------------------
-
+    '''
     def read_trace(self, n_trace=1):
 
         """
@@ -138,6 +138,7 @@ class FSL(Instrument):
         :return: 2d numpy array of the trace data, [[frequency], [amplitude]].
         """
 
+       
         dict = self.available_channels
         if self.active_channel == ("PNO") or dict.get(self.active_channel) == "PNOISE":
 
@@ -147,6 +148,36 @@ class FSL(Instrument):
         elif self.active_channel == ("SAN") or dict.get(self.active_channel) == "SANALYZER":
 
             y = np.array(self.values(f"TRAC? TRACE{n_trace}"))
+            x = np.linspace(self.freq_start, self.freq_stop, len(y))
+
+        return np.array([x, y])
+'''
+
+    def read_trace(self, n_trace=1):
+
+        """
+        Read trace data from the active channel.
+
+        :param n_trace: The trace number (1-6). Default is 1.
+        :return: 2d numpy array of the trace data, [[frequency], [amplitude]].
+        """
+
+        trace_data = np.array(self.values(f"TRAC? TRACE{n_trace}"))
+        # dict = self.available_channels
+        if (
+            self.active_channel == ("PNO")
+            or self.available_channels.get(self.active_channel) == "PNOISE"
+        ):
+
+            y = trace_data[1::2]
+            x = trace_data[0::2]
+
+        elif (
+            self.active_channel == ("SAN")
+            or self.available_channels.get(self.active_channel) == "SANALYZER"
+        ):
+
+            y = trace_data
             x = np.linspace(self.freq_start, self.freq_stop, len(y))
 
         return np.array([x, y])
@@ -315,15 +346,34 @@ class FSL(Instrument):
 
     @property
     def active_channel(self):
+        """_Returns active channel_
+
+        Returns:
+            _string_: _active channel_
+        """
 
         return self.values("INST?")[0]
 
     @active_channel.setter
     def activate_channel(self, channel):
+        """_To activate another open channel_
+
+        Args:
+            channel (_string_): _to be activated_
+        """
         availabel_channels = [chan for chan in self.available_channels.keys()]
         channel = strict_discrete_set(channel, availabel_channels)
         self.write(f"INST '{channel}'")
 
+    split_view = Instrument.control(
+        "DISP:FORM?",
+        "DISP:FORM %s",
+        "split_view can be True or False",
+        values={True: "SPL", False: "SING"},
+        map_values=True,
+    )
+
+    '''
     def view_mode(self, view="SPL"):
         """To get a MultiView of the open channels or return to the last active channel
         Args:
@@ -331,6 +381,7 @@ class FSL(Instrument):
             active channel use "SING".
         """
         self.write(f"DISP:FORM {view}")
+    '''
 
     def rename_channel(self, current_name, new_name):
         """Renames an open channel
@@ -351,3 +402,8 @@ class FSL(Instrument):
     def select_trace(self, trace):
         strict_discrete_range(trace, range(1, 7), 1)
         self.write(f"DISP:TRAC:SEL {trace}")
+
+    # Nominal Level
+
+    def nominal_level(freq_value):
+        self.write(f"POW:RLEV:VER")
