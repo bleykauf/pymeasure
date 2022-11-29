@@ -169,15 +169,14 @@ class FSL(Instrument):
         values=["WRIT", "MAXH", "MINH", "AVER", "VIEW"],
     )
 
-    # Markers -----------------------------------------------------------------
+    # Markers --------------------------------------------------------------------------------------
 
     def create_marker(self, num=1, is_delta_marker=False):
         """
         Create a marker.
 
         :param num: The marker number (1-4)
-        :param is_delta_marker: True if the marker is a delta marker, default
-            is False.
+        :param is_delta_marker: True if the marker is a delta marker, default is False.
         :return: The marker object.
         """
         return self.Marker(self, num, is_delta_marker)
@@ -189,8 +188,7 @@ class FSL(Instrument):
 
             :param instrument: The FSL instrument.
             :param num: The marker number (1-4)
-            :param is_delta_marker: True if the marker is a delta marker,
-                defaults to False.
+            :param is_delta_marker: True if the marker is a delta marker, defaults to False.
             """
             self.instrument = instrument
             self.is_delta_marker = is_delta_marker
@@ -256,8 +254,7 @@ class FSL(Instrument):
             """
             Set marker to next peak.
 
-            :param direction: Direction of the next peak ('left' or 'right' of
-                the current position).
+            :param direction: Direction of the next peak ('left' or 'right' of the current position)
             """
             self.write(f"MAX:{direction}")
 
@@ -274,23 +271,20 @@ class FSL(Instrument):
     # Channels -----------------------------------------------------------------
 
     def create_channel(self, channel_type, channel_name):
-        """Create a new channel
+        """Creates a new channel.
 
-        Args:
-            channel_type (string): PNOISE or SANALYZER
-            channel_name (string): Phase Noise, Spectrum analyser, etc
+        :param channel_type: Type of channel to be created.For example "PNOISE" or "SANALYZER"
+        :param channel_name: Name of the channel to be added.
         """
 
         strict_discrete_set(channel_type, ["PNOISE", "SANALYZER"])
         self.write(f"INST:CRE:NEW {channel_type}, '{channel_name}'")
 
     def _channel_list_to_dict(raw):
-        """Create a dictionary of open channels and their types
-        Args:
-            raw (list): list of channel names and channel types
+        """dictionary with channel_name as keys and channel_type as values
 
-        Returns:
-            dictionary : dictionary with channel_name : channel_type
+        :param raw: List of channel types and channel names
+        :return: dictionary with channel_name : channel_type
         """
         d = {
             set_keys.strip("'"): set_values.strip("'")
@@ -306,11 +300,9 @@ class FSL(Instrument):
     )
 
     def delete_channel(self, channel_name):
-        """Deletes a channel
 
-        Args:
-            channel_name (string): name of the channel to be deleted
-        """
+        """Deletes an active channel."""
+
         channels = self.available_channels
         strict_discrete_set(channel_name, list(channels.keys()))
         self.write(f"INST:DEL '{channel_name}'")
@@ -318,27 +310,23 @@ class FSL(Instrument):
     def select_channel(self, channel_name):
         """Selects an open channel
 
-        Args:
-            channel_name (string): name of the channel to be selected
+        :param channel_name: Channel to be selected.
         """
         self.write(f"INST:SEL '{channel_name}'")
 
     @property
     def active_channel(self):
-        """_Returns active channel_
+        """Returns the name of the active channel.
 
-        Returns:
-            _string_: _active channel_
+        :return: active channel name
+        :rtype: _type_
         """
-
         return self.values("INST?")[0]
 
     @active_channel.setter
     def activate_channel(self, channel):
-        """_To activate another open channel_
-
-        Args:
-            channel (_string_): _to be activated_
+        """Activates another open channel.
+        :param channel: Name of the channel to be activated
         """
         availabel_channels = [chan for chan in self.available_channels.keys()]
         channel = strict_discrete_set(channel, availabel_channels)
@@ -353,11 +341,12 @@ class FSL(Instrument):
     )
 
     def rename_channel(self, current_name, new_name):
-        """Renames an open channel
-        Args:
-            current_name (string): channel to be renamed
-            new_name (String): new name of the channel
+        """_summary_
+
+        :param current_name: Channel to be renamed
+        :param new_name: New name of the channel
         """
+
         channels = self.available_channels
         strict_discrete_set(current_name, list(channels.keys()))
         self.write(f"INST:REN '{current_name}', '{new_name}'")
