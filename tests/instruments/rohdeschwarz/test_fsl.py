@@ -3,14 +3,14 @@
 import pytest
 from pymeasure.instruments.rohdeschwarz.fsl import FSL
 
-# pytest.skip("Only works with connected hardware", allow_module_level=True)
+pytest.skip("Only works with connected hardware", allow_module_level=True)
 RESOURCE = "TCPIP::141.20.43.231::INSTR"
 
 
 @pytest.fixture
 def fsl_default_state():
     """
-    Return an FSL instrument.
+    Return an FSL instrument in its default state.
     """
 
     fsl = FSL(RESOURCE)
@@ -36,6 +36,7 @@ def fsl_with_channels():
 def test_create_channels(fsl_default_state):
     """Create two channels one to get spectrum and the other to get phase
     noise."""
+
     fsl = fsl_default_state
     fsl.create_channel("SANALYZER", "Test Spectrum")
     fsl.create_channel("PNOISE", "Test Phase Noise")
@@ -49,8 +50,9 @@ def test_create_channels(fsl_default_state):
 
 def test_activating_channel(fsl_with_channels):
 
-    """Activating the "Test Spectrum" channel and checking that the
+    """Activate the "Test Spectrum" channel and check that the
     channel_type is "SANALYZER" for it."""
+
     fsl = fsl_with_channels
 
     fsl.activate_channel = "Test Spectrum"
@@ -68,8 +70,9 @@ def test_renaming_channel(fsl_with_channels):
 
 
 def test_deleting_channels(fsl_with_channels):
-    """Delete the channel "Spectrum" and check the dictionary for available
+    """Delete the channel "Spectrum" and check the available
     channels"""
+
     fsl = fsl_with_channels
     fsl.delete_channel("Spectrum")
     assert fsl.available_channels == {

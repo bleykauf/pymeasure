@@ -53,7 +53,7 @@ class FSL(Instrument):
     def __init__(self, adapter, **kwargs):
         super().__init__(adapter, "Rohde&Schwarz FSL", includeSCPI=True, **kwargs)
 
-    # Frequency settings ------------------------------------------------------
+    # Frequency settings --------------------------------------------------------------
 
     freq_span = Instrument.control(
         "FREQ:SPAN?",
@@ -100,7 +100,7 @@ class FSL(Instrument):
         set_process=_number_or_auto,
     )
 
-    # Sweeping ----------------------------------------------------------------
+    # Sweeping ------------------------------------------------------------------------
 
     sweep_time = Instrument.control(
         "SWE:TIME?",
@@ -113,7 +113,7 @@ class FSL(Instrument):
     continuous_sweep = Instrument.control(
         "INIT:CONT?",
         "INIT:CONT %s",
-        "Continuous (True) or phase_noise_tracer single sweep (False)",
+        "Continuous (True) or single sweep (False)",
         validator=strict_discrete_set,
         values={True: 1, False: 0},
         map_values=True,
@@ -127,7 +127,7 @@ class FSL(Instrument):
         """Continue with single sweep with synchronization."""
         self.write("INIT:CONM; *WAI")
 
-    # Traces ------------------------------------------------------------------
+    # Traces --------------------------------------------------------------------------
 
     def read_trace(self, n_trace=1):
         """
@@ -161,7 +161,7 @@ class FSL(Instrument):
         values=["WRIT", "MAXH", "MINH", "AVER", "VIEW"],
     )
 
-    # Markers --------------------------------------------------------------------------------------
+    # Markers -------------------------------------------------------------------------
 
     def create_marker(self, num=1, is_delta_marker=False):
         """
@@ -207,7 +207,7 @@ class FSL(Instrument):
 
         def values(self, command, **kwargs):
             """
-            Reads a set of values from the instrument through the adapter,
+            Read a set of values from the instrument through the adapter,
             passing on any keyword arguments.
             """
             return self.instrument.values(f"CALC:{self.name}:{command}", **kwargs)
@@ -263,7 +263,7 @@ class FSL(Instrument):
     # Channels -----------------------------------------------------------------
 
     def create_channel(self, channel_type, channel_name):
-        """Creates a new channel.
+        """Create a new channel.
 
         :param channel_type: Type of channel to be created.For example "PNOISE" or "SANALYZER"
         :param channel_name: Name of the channel to be added.
@@ -277,6 +277,7 @@ class FSL(Instrument):
 
         :param raw: List of channel types and channel names
         :return: dictionary with channel_name : channel_type
+        :rtype: has table type with string type elements
         """
         d = {
             set_keys.strip("'"): set_values.strip("'")
@@ -287,7 +288,7 @@ class FSL(Instrument):
 
     available_channels = Instrument.measurement(
         "INST:LIST?",
-        "Dictionary of open channels and their types",
+        "Measure open channel names and corresponding types",
         get_process=_channel_list_to_dict,
     )
 
@@ -297,7 +298,7 @@ class FSL(Instrument):
         self.write(f"INST:DEL '{channel_name}'")
 
     def select_channel(self, channel_name):
-        """Selects an open channel
+        """Select an open channel
 
         :param channel_name: Channel to be selected.
         """
@@ -305,16 +306,16 @@ class FSL(Instrument):
 
     @property
     def active_channel(self):
-        """Returns the name of the active channel.
+        """Return the name of the active channel.
 
         :return: active channel name
-        :rtype: _type_
+        :rtype: string
         """
         return self.values("INST?")[0]
 
     @active_channel.setter
     def activate_channel(self, channel):
-        """Activates another open channel.
+        """Activate another open channel.
         :param channel: Name of the channel to be activated
         """
         availabel_channels = [chan for chan in self.available_channels.keys()]
@@ -324,13 +325,13 @@ class FSL(Instrument):
     split_view = Instrument.control(
         "DISP:FORM?",
         "DISP:FORM %s",
-        "split_view can be True or False",
+        "Control the viewmode of the device: True for split view or False for single channel view",
         values={True: "SPL", False: "SING"},
         map_values=True,
     )
 
     def rename_channel(self, current_name, new_name):
-        """_summary_
+        """Rename current_name of a channel to a new_name.
 
         :param current_name: Channel to be renamed
         :param new_name: New name of the channel
@@ -353,5 +354,5 @@ class FSL(Instrument):
 
     # Overview -----------------------------------------------------
     nominal_level = Instrument.control(
-        "POW:RLEV?", "POW:RLEV %s", "Defines the nominal level of the R&S FSW"
+        "POW:RLEV?", "POW:RLEV %s", "Control the nominal level of the R&S FSW"
     )
