@@ -293,9 +293,7 @@ class FSL(Instrument):
 
     def delete_channel(self, channel_name):
         """Deletes an active channel."""
-
-        channels = self.available_channels
-        strict_discrete_set(channel_name, list(channels.keys()))
+        strict_discrete_set(channel_name, list((self.available_channels).keys()))
         self.write(f"INST:DEL '{channel_name}'")
 
     def select_channel(self, channel_name):
