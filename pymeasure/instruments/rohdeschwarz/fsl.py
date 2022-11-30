@@ -78,9 +78,6 @@ class FSL(Instrument):
         "FREQ:STOP %s",
         "Stop frequency in Hz.",
     )
-    nominal_level = Instrument.control(
-        "POW:RLEV?", "POW:RLEV %s", "Defines the nominal level of the R&S FSW"
-    )
 
     attenuation = Instrument.control(
         "INP:ATT?",
@@ -133,21 +130,17 @@ class FSL(Instrument):
     # Traces ------------------------------------------------------------------
 
     def read_trace(self, n_trace=1):
-
         """
         Read trace data from the active channel.
 
         :param n_trace: The trace number (1-6). Default is 1.
         :return: 2d numpy array of the trace data, [[frequency], [amplitude]].
         """
-
         trace_data = np.array(self.values(f"TRAC? TRACE{n_trace}"))
-        # dict = self.available_channels
         if (
             self.active_channel == ("PNO")
             or self.available_channels.get(self.active_channel) == "PNOISE"
         ):
-
             y = trace_data[1::2]
             x = trace_data[0::2]
 
@@ -155,7 +148,6 @@ class FSL(Instrument):
             self.active_channel == ("SAN")
             or self.available_channels.get(self.active_channel) == "SANALYZER"
         ):
-
             y = trace_data
             x = np.linspace(self.freq_start, self.freq_stop, len(y))
 
@@ -300,7 +292,6 @@ class FSL(Instrument):
     )
 
     def delete_channel(self, channel_name):
-
         """Deletes an active channel."""
 
         channels = self.available_channels
@@ -346,9 +337,9 @@ class FSL(Instrument):
         :param current_name: Channel to be renamed
         :param new_name: New name of the channel
         """
-
-        channels = self.available_channels
-        strict_discrete_set(current_name, list(channels.keys()))
+        # channels = self.available_channels
+        # strict_discrete_set(current_name, list(channels.keys()))
+        current_name = strict_discrete_set(current_name, list((self.available_channels).keys()))
         self.write(f"INST:REN '{current_name}', '{new_name}'")
 
     # Phase noise limit lines --------------------------------------
@@ -359,4 +350,10 @@ class FSL(Instrument):
 
     def select_trace(self, trace):
         strict_discrete_range(trace, range(1, 7), 1)
+
         self.write(f"DISP:TRAC:SEL {trace}")
+
+    # Overview -----------------------------------------------------
+    nominal_level = Instrument.control(
+        "POW:RLEV?", "POW:RLEV %s", "Defines the nominal level of the R&S FSW"
+    )
