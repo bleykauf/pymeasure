@@ -33,6 +33,7 @@ Instruments by manufacturer:
    danfysik/index
    deltaelektronica/index
    edwards/index
+   eurotest/index
    fluke/index
    fwbell/index
    heidenhain/index
@@ -41,6 +42,7 @@ Instruments by manufacturer:
    keithley/index
    keysight/index
    lakeshore/index
+   lecroy/index
    newport/index
    ni/index
    oxfordinstruments/index
@@ -48,10 +50,12 @@ Instruments by manufacturer:
    pendulum/index
    razorbill/index
    rohdeschwarz/index
+   siglenttechnologies/index
    signalrecovery/index
    srs/index
    tektronix/index
    temptronic/index
+   texio/index
    thermotron/index
    thorlabs/index
    toptica/index
