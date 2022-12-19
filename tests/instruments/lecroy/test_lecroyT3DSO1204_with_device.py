@@ -343,7 +343,7 @@ class TestLeCroyT3DSO1204:
             instrument.autoscale()
             sleep(7)
         instrument.ch(case1).display = True
-        instrument.single()
+        instrument.arm_acquisition()
         data, time, preamble = instrument.download_waveform(
             source=case1, requested_points=case2, sparsing=0
         )
@@ -356,7 +356,7 @@ class TestLeCroyT3DSO1204:
     def test_download_single_point(self, instrument):
         instrument.acquisition_type = "normal"
         instrument.ch_1.display = True
-        instrument.single()
+        instrument.arm_acquisition()
         data, time, preamble = instrument.download_waveform(source="c1", requested_points=1)
         assert type(data) is np.ndarray
         assert len(data) == 1
@@ -379,7 +379,7 @@ class TestLeCroyT3DSO1204:
         from matplotlib import pyplot as plt
 
         instrument.ch_1.display = True
-        instrument.single()
+        instrument.arm_acquisition()
         sleep(1)
         data, time, preamble = instrument.download_waveform(source="c1", requested_points=0)
         assert type(data) is np.ndarray
@@ -394,7 +394,7 @@ class TestLeCroyT3DSO1204:
         from matplotlib import pyplot as plt
 
         instrument.ch_1.display = True
-        instrument.single()
+        instrument.arm_acquisition()
         sleep(1)
         data, time, preamble = instrument.download_waveform(
             source="c1", requested_points=7e5, sparsing=10
@@ -419,7 +419,7 @@ class TestLeCroyT3DSO1204:
         instrument.run()
         instrument.acquisition_type = "average"
         instrument.acquisition_average = 16
-        instrument.single()
+        instrument.arm_acquisition()
         sleep(1)
         data, time, preamble = instrument.download_waveform(
             source="c1", requested_points=1.75e5, sparsing=10
@@ -444,7 +444,7 @@ class TestLeCroyT3DSO1204:
         instrument.run()
         instrument.acquisition_type = "average"
         instrument.acquisition_average = 256
-        instrument.single()
+        instrument.arm_acquisition()
         sleep(1)
         data, time, preamble = instrument.download_waveform(
             source="c1", requested_points=1.75e5, sparsing=10
@@ -465,7 +465,7 @@ class TestLeCroyT3DSO1204:
     def test_download_math(self, instrument):
         from matplotlib import pyplot as plt
 
-        instrument.single()
+        instrument.arm_acquisition()
         sleep(1)
         data, time, preamble = instrument.download_waveform(
             source="math", requested_points=0, sparsing=10
