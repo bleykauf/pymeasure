@@ -33,8 +33,9 @@ from pymeasure.instruments.lecroy.lecroyT3DSO1204 import LeCroyT3DSO1204
 
 # IMPORTANT: For these tests to pass, it is required that CH1 is connected with a probe set to 10x
 # is connected from the Compensation Signal Output Terminal to the CH1 input of the oscilloscope.
-# For instructions, see "Function Inspection" and "Probe Compensation" sections on page 8 of the
-# user manual (https://cdn.teledynelecroy.com/files/manuals/t3dso1000_usermanual.pdf)
+# After connection the probe, press "Default" and then "Auto Setup" on the front panel of the
+# oscilloscope.For further instructions, see "Function Inspection" and "Probe Compensation" sections
+# on page 8 of the user manual https://cdn.teledynelecroy.com/files/manuals/t3dso1000_usermanual.pdf
 
 
 class TestLeCroyT3DSO1204:
